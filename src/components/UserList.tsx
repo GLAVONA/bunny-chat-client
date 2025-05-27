@@ -3,7 +3,7 @@ import type { UserListProps } from "../types";
 function UserList({ users, currentUser }: UserListProps) {
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+      <h2 className="text-xl font-bold text-white mb-4 pb-2 border-b border-gray-200">
         Online Users ({users.length})
       </h2>
       <div id="userListContainer" className="flex-1 overflow-y-auto">

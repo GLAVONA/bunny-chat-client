@@ -222,7 +222,7 @@ function App() {
               />
               <div
                 className="w-1/4 flex-shrink-0 bg-white rounded-lg shadow p-4"
-                style={{ backgroundColor: "rgba(255, 255, 255, 0.6)" }}
+                style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
               >
                 <UserList
                   users={users}

@@ -62,12 +62,12 @@ function ChatWindow({
 
   return (
     <div
-      className="relative flex flex-col flex-1 rounded-lg bg-white p-4 shadow"
-      style={{ backgroundColor: "rgba(255, 255, 255, 0.6)" }}
+      className="relative flex flex-col flex-1 rounded-lg bg-white p-4 shadow "
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-        <h2 className="text-xl font-bold text-gray-800">Chat Room</h2>
+        <h2 className="text-xl font-bold text-white">Chat Room</h2>
         <button
           onClick={onDisconnect}
           className="rounded-md bg-red-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-red-600"
@@ -122,7 +122,7 @@ function ChatWindow({
         <div className="relative flex-1">
           <input
             type="text"
-            className="w-full rounded-md border border-gray-300 px-4 py-2 pr-12 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 px-4 py-2 pr-12 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-white"
             placeholder="Type your message..."
             ref={textBoxRef}
             value={messageInput}
