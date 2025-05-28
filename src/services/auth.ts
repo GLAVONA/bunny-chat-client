@@ -1,7 +1,7 @@
 import type { AuthResponse, SessionResponse } from '../types';
 
-// Ensure we have a proper URL with protocol and host
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+// Use relative URL for API endpoints to work with Vite's proxy
+const API_BASE_URL = '/api';
 
 export class AuthService {
   private static async fetchWithCredentials(

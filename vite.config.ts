@@ -7,10 +7,18 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      "/ws": {
-        // Proxy WebSocket connections
-        target: "ws://localhost:8080", // Your Go WebSocket server address
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+        secure: false,
         ws: true,
+      },
+      "/ws": {
+        target: "ws://localhost:8080",
+        ws: true,
+        changeOrigin: true,
+        secure: false,
       },
     },
   },

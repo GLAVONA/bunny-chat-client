@@ -18,13 +18,11 @@ export class WebSocketService {
   private isConnecting = false;
 
   constructor(
-    private serverUrl: string,
     private username: string,
     private room: string,
     private token: string
   ) {
     console.log('WebSocketService constructor called with:', {
-      serverUrl,
       username,
       room,
       hasToken: !!token
@@ -33,14 +31,15 @@ export class WebSocketService {
   }
 
   private getWebSocketUrl(): string {
-    const serverUrl = new URL(this.serverUrl);
-    const protocol = serverUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use relative URL for WebSocket to work with Vite's proxy
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
     const params = new URLSearchParams({
       username: this.username,
       room: this.room,
       token: this.token
     });
-    const url = `${protocol}//${serverUrl.host}/ws?${params.toString()}`;
+    const url = `${protocol}//${host}/ws?${params.toString()}`;
     console.log('Generated WebSocket URL:', url);
     return url;
   }
