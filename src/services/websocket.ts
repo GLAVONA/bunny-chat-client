@@ -34,11 +34,13 @@ export class WebSocketService {
     // Use relative URL for WebSocket to work with Vite's proxy
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const params = new URLSearchParams({
-      username: this.username,
-      room: this.room,
-      token: this.token
-    });
+    const params = new URLSearchParams();
+    
+    // Ensure parameters are properly encoded
+    if (this.username) params.append('username', this.username);
+    if (this.room) params.append('room', this.room);
+    if (this.token) params.append('token', this.token);
+    
     const url = `${protocol}//${host}/ws?${params.toString()}`;
     console.log('Generated WebSocket URL:', url);
     return url;
