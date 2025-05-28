@@ -45,7 +45,7 @@ export interface DisplayMessage {
 
 // Props for components (these remain largely unchanged as they are for component API)
 export interface ChatSetupProps {
-  onConnect: (username: string, room: string, token: string) => void;
+  onConnect: (username: string, room: string, token?: string) => Promise<void>;
 }
 
 export interface ChatWindowProps {
@@ -67,3 +67,16 @@ export interface UserListProps {
 // For outgoing messages, we can still construct them clearly.
 // For example, when sending a chat message from frontend:
 // { type: "chat", username: "...", content: "..." }
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  username?: string;
+  room?: string;
+}
+
+export interface SessionResponse {
+  valid: boolean;
+  username?: string;
+  room?: string;
+}

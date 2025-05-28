@@ -5,17 +5,29 @@ import type { ChatSetupProps } from "../types";
 
 function ChatSetup({ onConnect }: ChatSetupProps) {
   const [inputUsername, setInputUsername] = useState<string>("");
-  const [inputRoom] = useState<string>("");
+  const [inputRoom, setInputRoom] = useState<string>("");
   const [inputToken, setInputToken] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputUsername.trim() && inputToken.trim()) {
-      onConnect(inputUsername.trim(), inputRoom.trim(), inputToken.trim()); // Pass all three
-    } else {
-      alert(
-        "Please fill in all fields (username, room, and authentication token)."
+    if (!inputUsername.trim()) {
+      alert("Please enter a username.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await onConnect(
+        inputUsername.trim(),
+        inputRoom.trim(),
+        inputToken.trim()
       );
+    } catch (error) {
+      console.error("Connection error:", error);
+      alert(error instanceof Error ? error.message : "Failed to connect");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -45,12 +57,12 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
               required
             />
           </div>
-          {/* <div>
+          <div>
             <label
               htmlFor="room"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Enter room name:
+              Enter room name (optional):
             </label>
             <input
               type="text"
@@ -62,13 +74,13 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
               }
               placeholder="e.g., general, gaming, tech"
             />
-          </div> */}
+          </div>
           <div>
             <label
               htmlFor="token"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Authentication Token:
+              Authentication Token (optional for returning users):
             </label>
             <input
               type="password"
@@ -79,14 +91,16 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
                 setInputToken(e.target.value)
               }
               placeholder="Paste your auth token here (e.g., supersecrettoken1)"
-              required
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300"
+            disabled={isLoading}
+            className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300 ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
-            Join Chat
+            {isLoading ? "Connecting..." : "Join Chat"}
           </button>
         </form>
       </div>
