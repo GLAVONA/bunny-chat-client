@@ -8,21 +8,28 @@ export class AuthService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<Response> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        credentials: 'include',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...options.headers,
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      throw error;
     }
-
-    return response;
   }
 
   static async authenticate(username: string, token: string, room?: string): Promise<AuthResponse> {
@@ -46,7 +53,9 @@ export class AuthService {
 
   static async checkSession(): Promise<SessionResponse> {
     try {
-      const response = await this.fetchWithCredentials('/session');
+      const response = await this.fetchWithCredentials('/session', {
+        method: 'GET',
+      });
       return await response.json();
     } catch (error) {
       console.error('Session check error:', error);
@@ -56,7 +65,12 @@ export class AuthService {
 
   static async logout(): Promise<void> {
     try {
-      await this.fetchWithCredentials('/logout', { method: 'POST' });
+      await this.fetchWithCredentials('/logout', { 
+        method: 'POST',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
