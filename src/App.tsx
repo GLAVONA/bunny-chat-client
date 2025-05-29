@@ -135,7 +135,7 @@ function App() {
         }
 
         // Create new WebSocket connection
-        ws.current = new WebSocketService("http://127.0.0.1:8080", user, room);
+        ws.current = new WebSocketService(user, "", token ?? "");
 
         // Set up message handlers
         const cleanupMessage = ws.current.onMessage(handleWebSocketMessage);
