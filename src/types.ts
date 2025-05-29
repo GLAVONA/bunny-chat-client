@@ -7,43 +7,39 @@ export type MessageType =
   | "join"
   | "leave"
   | "error"
-  | "message" // Added 'message' as per Go's readPump
-  | "history_batch";
+  | "message"
+  | "history_batch"
+  | "load_more_history";
 
 export interface WebSocketMessage {
-  type:
-    | "chat"
-    | "join"
-    | "leave"
-    | "notification"
-    | "error"
-    | "history_batch"
-    | "user_list"; // Added 'history_batch'
+  type: MessageType;
   username?: string;
   content?: string;
   room?: string;
   userList?: string[];
-  timestamp?: string; // Always include timestamp for chat/history items
-
-  // NEW: Add a field for the array of historical messages
+  timestamp?: string;
   history?: Array<{
-    type: "chat"; // Historical messages are always 'chat' type for display
+    type: "chat";
     username: string;
     content: string;
     room: string;
     timestamp: string;
   }>;
+  // Pagination fields
+  pageSize?: number;
+  pageToken?: string;
+  hasMore?: boolean;
 }
 
 // Client-side message representation (for display)
 export interface DisplayMessage {
   type: "chat" | "notification";
-  sender?: string; // Optional for notification
+  sender?: string;
   content: string;
-  timestamp?: string; // Optional for notification (your Go backend doesn't send this for now)
+  timestamp?: string;
 }
 
-// Props for components (these remain largely unchanged as they are for component API)
+// Props for components
 export interface ChatSetupProps {
   onConnect: (username: string, room: string, token?: string) => Promise<void>;
 }
@@ -51,6 +47,8 @@ export interface ChatSetupProps {
 export interface ChatWindowProps {
   messages: DisplayMessage[];
   sendMessage: (content: string) => void;
+  loadMoreHistory: () => void;
+  hasMoreHistory: boolean;
   username: string;
   roomName: string;
   onDisconnect: () => void;

@@ -14,6 +14,8 @@ function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [users, setUsers] = useState<string[]>([]);
+  const [hasMoreHistory, setHasMoreHistory] = useState<boolean>(false);
+  const [pageToken, setPageToken] = useState<string>("");
   const ws = useRef<WebSocketService | null>(null);
   const cleanupRef = useRef<(() => void)[]>([]);
 
@@ -43,8 +45,10 @@ function App() {
             })
           );
           setMessages((prev) => [...historyDisplayMessages, ...prev]);
+          setHasMoreHistory(message.hasMore || false);
+          setPageToken(message.pageToken || "");
           console.log(
-            `Displayed ${historyDisplayMessages.length} historical messages.`
+            `Displayed ${historyDisplayMessages.length} historical messages. Has more: ${message.hasMore}`
           );
         }
         break;
@@ -101,6 +105,19 @@ function App() {
         console.warn("Unknown message type received:", message.type, message);
     }
   }, []);
+
+  const loadMoreHistory = useCallback(() => {
+    if (!ws.current || !hasMoreHistory || !pageToken) return;
+
+    const loadMoreMessage: WebSocketMessage = {
+      type: "load_more_history",
+      room: roomName,
+      pageToken: pageToken,
+      pageSize: 50, // Use the same page size as server
+    };
+
+    ws.current.sendMessage(loadMoreMessage);
+  }, [hasMoreHistory, pageToken, roomName]);
 
   const connectWebSocket = useCallback(
     async (user: string, room: string, token?: string) => {
@@ -252,6 +269,8 @@ function App() {
                 <ChatWindow
                   messages={messages}
                   sendMessage={sendMessage}
+                  loadMoreHistory={loadMoreHistory}
+                  hasMoreHistory={hasMoreHistory}
                   username={username}
                   roomName={roomName}
                   onDisconnect={handleDisconnect}

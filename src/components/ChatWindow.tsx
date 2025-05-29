@@ -26,23 +26,80 @@ const makeLinksClickable = (text: string) => {
 function ChatWindow({
   messages,
   sendMessage,
+  loadMoreHistory,
+  hasMoreHistory,
   username,
   onDisconnect,
 }: ChatWindowProps) {
   const [messageInput, setMessageInput] = useState<string>("");
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const textBoxRef = useRef<HTMLInputElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const initialLoadDoneRef = useRef<boolean>(false);
+  const oldScrollHeightRef = useRef<number>(0);
+  const oldScrollTopRef = useRef<number>(0);
+  const pendingScrollAdjustmentRef = useRef<boolean>(false);
+  const prevMessagesLengthRef = useRef<number>(0);
+  const observerRef = useRef<MutationObserver | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Set up MutationObserver to handle scroll position adjustments
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!chatMessagesRef.current) return;
+
+    observerRef.current = new MutationObserver(() => {
+      if (pendingScrollAdjustmentRef.current && chatMessagesRef.current) {
+        const chatMessages = chatMessagesRef.current;
+        const newScrollHeight = chatMessages.scrollHeight;
+        const scrollDiff = newScrollHeight - oldScrollHeightRef.current;
+
+        // Apply scroll adjustment immediately when DOM changes
+        chatMessages.scrollTop = oldScrollTopRef.current + scrollDiff;
+        pendingScrollAdjustmentRef.current = false;
+        setIsLoadingMore(false);
+      }
+    });
+
+    observerRef.current.observe(chatMessagesRef.current, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  // Scroll to bottom on initial load and when new messages arrive
+  useEffect(() => {
+    if (!initialLoadDoneRef.current && messages.length > 0) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (chatMessagesRef.current) {
+          chatMessagesRef.current.scrollTop =
+            chatMessagesRef.current.scrollHeight;
+          initialLoadDoneRef.current = true;
+        }
+      });
+    } else if (
+      messages.length > prevMessagesLengthRef.current &&
+      !pendingScrollAdjustmentRef.current &&
+      !isLoadingMore
+    ) {
+      // Only scroll to bottom for new messages, not when loading history
+      requestAnimationFrame(() => {
+        if (chatMessagesRef.current) {
+          chatMessagesRef.current.scrollTop =
+            chatMessagesRef.current.scrollHeight;
+        }
+      });
+    }
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages, isLoadingMore]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +140,26 @@ function ChatWindow({
     };
   }, []);
 
+  // Handle scroll to load more history
+  useEffect(() => {
+    const chatMessages = chatMessagesRef.current;
+    if (!chatMessages) return;
+
+    const handleScroll = () => {
+      if (chatMessages.scrollTop === 0 && hasMoreHistory && !isLoadingMore) {
+        // Save current scroll position and height before loading more
+        oldScrollHeightRef.current = chatMessages.scrollHeight;
+        oldScrollTopRef.current = chatMessages.scrollTop;
+        pendingScrollAdjustmentRef.current = true;
+        setIsLoadingMore(true);
+        loadMoreHistory();
+      }
+    };
+
+    chatMessages.addEventListener("scroll", handleScroll);
+    return () => chatMessages.removeEventListener("scroll", handleScroll);
+  }, [hasMoreHistory, loadMoreHistory, isLoadingMore]);
+
   return (
     <div
       className="relative flex flex-col h-full rounded-lg p-4 shadow"
@@ -101,8 +178,20 @@ function ChatWindow({
       {/* Chat Messages Area */}
       <div
         id="chatMessages"
+        ref={chatMessagesRef}
         className="flex-1 overflow-y-auto min-h-0 space-y-2"
       >
+        {/* Load More Indicator */}
+        {hasMoreHistory && (
+          <div className="flex justify-center py-2">
+            <div className="text-sm text-gray-400">
+              {isLoadingMore
+                ? "Loading more messages..."
+                : "Scroll up to load more"}
+            </div>
+          </div>
+        )}
+
         {messages.map((msg: DisplayMessage, index: number) => (
           <div
             key={index}
@@ -146,7 +235,6 @@ function ChatWindow({
             )}
           </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input Form */}
@@ -203,7 +291,7 @@ function ChatWindow({
         </div>
         <button
           type="submit"
-          className="rounded-md bg-indigo-500/90 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-indigo-600/90"
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-indigo-700"
         >
           Send
         </button>
