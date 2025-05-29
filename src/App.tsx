@@ -57,7 +57,11 @@ function App() {
         if (message.content) {
           setMessages((prev) => [
             ...prev,
-            { type: "notification", content: message.content! },
+            {
+              type: "notification",
+              content: message.content!,
+              timestamp: new Date().toISOString(),
+            },
           ]);
         }
         break;
@@ -82,9 +86,10 @@ function App() {
             ...prev,
             {
               type: "notification",
-              content: `${message.username} ${
+              content: `${message.username} has ${
                 message.type === "join" ? "joined" : "left"
               } room "${message.room}".`,
+              timestamp: new Date().toISOString(),
             },
           ]);
           if (message.userList) {
@@ -130,7 +135,11 @@ function App() {
           setIsConnected(false);
           setMessages((prev) => [
             ...prev,
-            { type: "notification", content: "Disconnected from chat." },
+            {
+              type: "notification",
+              content: "Disconnected from chat.",
+              timestamp: new Date().toISOString(),
+            },
           ]);
           setUsers([]);
           setRoomName("");
@@ -233,25 +242,31 @@ function App() {
       className="flex flex-col h-screen bg-cover bg-center"
       style={{ backgroundImage: `url('galaxyBg.webp')` }}
     >
-      <main className="flex flex-1 p-4 overflow-hidden">
-        {!isConnected ? (
-          <ChatSetup onConnect={connectWebSocket} />
-        ) : (
-          <div className="flex w-full h-full space-x-4">
-            <ChatWindow
-              messages={messages}
-              sendMessage={sendMessage}
-              username={username}
-              roomName={roomName}
-              onDisconnect={handleDisconnect}
-            />
-            <UserList
-              users={users}
-              currentUser={username}
-              roomName={roomName}
-            />
-          </div>
-        )}
+      <main className="flex-1 flex justify-center px-4 md:px-8 lg:px-16 h-full">
+        <div className="w-full max-w-7xl flex gap-4 h-full">
+          {!isConnected ? (
+            <ChatSetup onConnect={connectWebSocket} />
+          ) : (
+            <>
+              <div className="flex-1 min-w-0 h-full">
+                <ChatWindow
+                  messages={messages}
+                  sendMessage={sendMessage}
+                  username={username}
+                  roomName={roomName}
+                  onDisconnect={handleDisconnect}
+                />
+              </div>
+              <div className="w-52 flex-shrink-0 h-full">
+                <UserList
+                  users={users}
+                  currentUser={username}
+                  roomName={roomName}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );

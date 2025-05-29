@@ -2,6 +2,27 @@ import React, { useState, useEffect, useRef } from "react";
 import type { ChatWindowProps, DisplayMessage } from "../types";
 import emojis from "../emojis";
 
+// Helper function to detect URLs and make them clickable
+const makeLinksClickable = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.split(urlRegex).map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-300 hover:text-blue-400 underline"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 function ChatWindow({
   messages,
   sendMessage,
@@ -35,11 +56,13 @@ function ChatWindow({
 
   const toggleEmojiPicker = () => {
     setIsEmojiPickerOpen((prev) => !prev);
+    textBoxRef.current?.focus();
   };
 
   const addEmoji = (emoji: string) => {
     setMessageInput((prev) => prev + emoji);
     setIsEmojiPickerOpen(false);
+    textBoxRef.current?.focus();
   };
 
   useEffect(() => {
@@ -62,15 +85,14 @@ function ChatWindow({
 
   return (
     <div
-      className="relative flex flex-col flex-1 rounded-lg bg-white p-4 shadow "
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+      className="relative flex flex-col h-full rounded-lg p-4 shadow"
+      style={{ backgroundColor: "rgba(23, 33, 43, 0.95)" }}
     >
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-        <h2 className="text-xl font-bold text-white">Chat Room</h2>
+      <div className="flex-shrink-0 mb-4 flex items-center justify-between border-b border-gray-500 pb-2">
         <button
           onClick={onDisconnect}
-          className="rounded-md bg-red-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-red-600"
+          className="rounded-md bg-red-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-red-700"
         >
           Disconnect
         </button>
@@ -79,7 +101,7 @@ function ChatWindow({
       {/* Chat Messages Area */}
       <div
         id="chatMessages"
-        className="mb-4 flex-1 overflow-y-auto pr-2 scrollbar-thumb-gray-400 scrollbar-track-gray-200 scrollbar-thin space-y-2" // Tailwind scrollbar classes (requires plugin)
+        className="flex-1 overflow-y-auto min-h-0 space-y-2"
       >
         {messages.map((msg: DisplayMessage, index: number) => (
           <div
@@ -93,23 +115,33 @@ function ChatWindow({
             }`}
           >
             {msg.type === "notification" ? (
-              <div className="mx-auto rounded-full bg-gray-300 px-3 py-1 text-center text-sm italic text-gray-700 max-w-fit shadow-sm">
+              <div className="mx-auto rounded-full bg-gray-600/80 px-3 py-1 text-center text-sm italic text-gray-100 max-w-fit shadow-sm">
                 {msg.content}
               </div>
             ) : (
               <div
-                className={`max-w-[70%] rounded-lg p-3 shadow-sm break-words whitespace-pre-wrap ${
+                className={`max-w-[80%] rounded-lg px-4 py-2 shadow-sm ${
                   msg.sender === username
-                    ? "ml-auto rounded-br-none bg-blue-500 text-white" // Sent message styles
-                    : "mr-auto rounded-bl-none bg-green-100 text-gray-900" // Received message styles
+                    ? "bg-indigo-500/80 text-white"
+                    : "bg-slate-600/80 text-gray-100"
                 }`}
               >
-                {msg.sender !== username && (
-                  <div className="mb-1 text-xs font-semibold text-gray">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-indigo-100">
                     {msg.sender}
-                  </div>
-                )}
-                <div>{msg.content}</div>
+                  </span>
+                  {msg.timestamp && (
+                    <span className="text-xs text-gray-300 ml-2">
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+                </div>
+                <div className="break-words text-gray-50">
+                  {makeLinksClickable(msg.content)}
+                </div>
               </div>
             )}
           </div>
@@ -122,7 +154,7 @@ function ChatWindow({
         <div className="relative flex-1">
           <input
             type="text"
-            className="w-full rounded-md border border-gray-300 px-4 py-2 pr-12 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-white"
+            className="w-full rounded-md border border-gray-500 bg-gray-800 px-4 py-2 pr-12 shadow-sm focus:border-blue-400 focus:ring-blue-400 text-gray-100 placeholder-gray-400"
             placeholder="Type your message..."
             ref={textBoxRef}
             value={messageInput}
@@ -140,7 +172,7 @@ function ChatWindow({
             type="button"
             ref={emojiButtonRef}
             onClick={toggleEmojiPicker}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-2xl hover:bg-gray-200"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-2xl hover:bg-gray-600 text-gray-300"
             title="Pick an emoji"
           >
             😊
@@ -150,7 +182,7 @@ function ChatWindow({
             <div
               id="emojiPicker"
               ref={emojiPickerRef}
-              className={`absolute bottom-full left-0 z-10 mb-2 grid w-[200px] grid-cols-5 gap-1 rounded-lg border border-gray-200 bg-white p-2 shadow-lg transition-all duration-200 ease-out ${
+              className={`absolute bottom-full right-0 z-10 mb-2 grid w-[200px] grid-cols-5 gap-1 rounded-lg border border-gray-600 bg-gray-800 p-2 shadow-lg transition-all duration-200 ease-out ${
                 isEmojiPickerOpen
                   ? "translate-y-0 opacity-100 visible pointer-events-auto"
                   : "translate-y-2 opacity-0 invisible pointer-events-none"
@@ -171,7 +203,7 @@ function ChatWindow({
         </div>
         <button
           type="submit"
-          className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white shadow-md transition duration-300 hover:bg-blue-700"
+          className="rounded-md bg-indigo-500/90 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-indigo-600/90"
         >
           Send
         </button>
