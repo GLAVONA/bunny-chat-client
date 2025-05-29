@@ -179,7 +179,7 @@ function ChatWindow({
       <div
         id="chatMessages"
         ref={chatMessagesRef}
-        className="flex-1 overflow-y-auto min-h-0 space-y-2"
+        className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-5"
       >
         {/* Load More Indicator */}
         {hasMoreHistory && (
