@@ -9,7 +9,8 @@ export type MessageType =
   | "error"
   | "message"
   | "history_batch"
-  | "load_more_history";
+  | "load_more_history"
+  | "image";
 
 export interface WebSocketMessage {
   type: MessageType;
@@ -18,12 +19,16 @@ export interface WebSocketMessage {
   room?: string;
   userList?: string[];
   timestamp?: string;
+  imageData?: string;
+  imageType?: string;
   history?: Array<{
-    type: "chat";
+    type: "chat" | "image";
     username: string;
-    content: string;
+    content?: string;
     room: string;
     timestamp: string;
+    imageData?: string;
+    imageType?: string;
   }>;
   // Pagination fields
   pageSize?: number;
@@ -33,10 +38,12 @@ export interface WebSocketMessage {
 
 // Client-side message representation (for display)
 export interface DisplayMessage {
-  type: "chat" | "notification";
+  type: "chat" | "notification" | "image";
   sender?: string;
-  content: string;
+  content?: string;
   timestamp?: string;
+  imageData?: string;
+  imageType?: string;
 }
 
 // Props for components
@@ -46,7 +53,10 @@ export interface ChatSetupProps {
 
 export interface ChatWindowProps {
   messages: DisplayMessage[];
-  sendMessage: (content: string) => void;
+  sendMessage: (
+    content: string,
+    imageData?: { type: "image"; imageData: string; imageType: string }
+  ) => void;
   loadMoreHistory: () => void;
   hasMoreHistory: boolean;
   username: string;

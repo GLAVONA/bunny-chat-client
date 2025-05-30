@@ -34,14 +34,30 @@ function App() {
           ]);
         }
         break;
+      case "image":
+        if (message.username && message.imageData) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: "image",
+              sender: message.username,
+              imageData: message.imageData,
+              imageType: message.imageType,
+              timestamp: message.timestamp,
+            },
+          ]);
+        }
+        break;
       case "history_batch":
         if (message.history && Array.isArray(message.history)) {
           const historyDisplayMessages: DisplayMessage[] = message.history.map(
             (histMsg) => ({
-              type: "chat",
+              type: histMsg.type === "image" ? "image" : "chat",
               sender: histMsg.username,
-              content: histMsg.content!,
+              content: histMsg.content,
               timestamp: histMsg.timestamp,
+              imageData: histMsg.imageData,
+              imageType: histMsg.imageType,
             })
           );
           setMessages((prev) => [...historyDisplayMessages, ...prev]);
@@ -214,26 +230,33 @@ function App() {
     };
   }, [connectWebSocket]);
 
-  const sendMessage = (content: string) => {
-    if (!ws.current) {
-      console.warn("WebSocket not open. Cannot send message.");
-      alert("You are not connected. Please join the chat again.");
-      return;
-    }
+  const handleSendMessage = useCallback(
+    (
+      content: string,
+      imageData?: { type: "image"; imageData: string; imageType: string }
+    ) => {
+      if (!ws.current) return;
 
-    try {
-      const chatMessageToSend: WebSocketMessage = {
-        type: "chat",
-        username: username,
-        content: content,
-        room: roomName,
-      };
-      ws.current.sendMessage(chatMessageToSend);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      alert("Failed to send message. Please try again.");
-    }
-  };
+      const message: WebSocketMessage = imageData
+        ? {
+            type: "image",
+            username: username,
+            room: roomName,
+            content: "",
+            imageData: imageData.imageData,
+            imageType: imageData.imageType,
+          }
+        : {
+            type: "chat",
+            username: username,
+            room: roomName,
+            content: content,
+          };
+
+      ws.current.sendMessage(message);
+    },
+    [username, roomName]
+  );
 
   const handleDisconnect = async () => {
     try {
@@ -268,7 +291,7 @@ function App() {
               <div className="flex-1 min-w-0 h-full">
                 <ChatWindow
                   messages={messages}
-                  sendMessage={sendMessage}
+                  sendMessage={handleSendMessage}
                   loadMoreHistory={loadMoreHistory}
                   hasMoreHistory={hasMoreHistory}
                   username={username}

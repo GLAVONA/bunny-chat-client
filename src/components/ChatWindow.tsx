@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { ChatWindowProps, DisplayMessage } from "../types";
 import emojis from "../emojis";
+import ImageViewer from "./ImageViewer";
 
 // Helper function to detect URLs and make them clickable
 const makeLinksClickable = (text: string) => {
@@ -34,6 +35,7 @@ function ChatWindow({
   const [messageInput, setMessageInput] = useState<string>("");
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const textBoxRef = useRef<HTMLInputElement>(null);
@@ -109,6 +111,29 @@ function ChatWindow({
       setIsEmojiPickerOpen(false);
     }
     textBoxRef.current?.focus();
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64Data = event.target?.result as string;
+            // Send image message
+            sendMessage("", {
+              type: "image",
+              imageData: base64Data,
+              imageType: file.type,
+            });
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
   };
 
   const toggleEmojiPicker = () => {
@@ -203,99 +228,104 @@ function ChatWindow({
                 : "justify-start"
             }`}
           >
-            {msg.type === "notification" ? (
-              <div className="mx-auto rounded-full bg-gray-600/80 px-3 py-1 text-center text-sm italic text-gray-100 max-w-fit shadow-sm">
-                {msg.content}
-              </div>
-            ) : (
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 shadow-sm ${
-                  msg.sender === username
-                    ? "bg-indigo-500/80 text-white"
-                    : "bg-slate-600/80 text-gray-100"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-indigo-100">
-                    {msg.sender}
-                  </span>
-                  {msg.timestamp && (
-                    <span className="text-xs text-gray-300 ml-2">
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+            <div
+              className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                msg.type === "notification"
+                  ? "bg-gray-700/50 text-gray-300 text-sm"
+                  : msg.sender === username
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-700 text-white"
+              }`}
+            >
+              {msg.type === "notification" ? (
+                <span>{msg.content}</span>
+              ) : msg.type === "image" ? (
+                <div className="space-y-1">
+                  {msg.sender && (
+                    <div className="text-xs text-gray-300">{msg.sender}</div>
                   )}
+                  <img
+                    src={msg.imageData}
+                    alt="Shared image"
+                    className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{ maxHeight: "300px" }}
+                    onClick={() =>
+                      msg.imageData && setSelectedImage(msg.imageData)
+                    }
+                  />
                 </div>
-                <div className="break-words text-gray-50">
-                  {makeLinksClickable(msg.content)}
+              ) : (
+                <div className="space-y-1">
+                  {msg.sender && (
+                    <div className="text-xs text-gray-300">{msg.sender}</div>
+                  )}
+                  <div className="wrap-break-word">
+                    {makeLinksClickable(msg.content || "")}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Message Input Form */}
-      <form onSubmit={handleSendMessage} className="mt-auto flex space-x-2">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            className="w-full rounded-md border border-gray-500 bg-gray-800 px-4 py-2 pr-12 shadow-sm focus:border-blue-400 focus:ring-blue-400 text-gray-100 placeholder-gray-400"
-            placeholder="Type your message..."
-            ref={textBoxRef}
-            value={messageInput}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setMessageInput(e.target.value)
-            }
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e);
-              }
-            }}
-          />
+      {/* Message Input */}
+      <form onSubmit={handleSendMessage} className="mt-4">
+        <div className="flex items-center space-x-2">
           <button
             type="button"
             ref={emojiButtonRef}
             onClick={toggleEmojiPicker}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-2xl hover:bg-gray-600 text-gray-300"
-            title="Pick an emoji"
+            className="text-gray-400 hover:text-gray-300"
           >
             😊
           </button>
-
-          {isEmojiPickerOpen && (
-            <div
-              id="emojiPicker"
-              ref={emojiPickerRef}
-              className={`absolute bottom-full right-0 z-10 mb-2 grid w-[200px] grid-cols-5 gap-1 rounded-lg border border-gray-600 bg-gray-800 p-2 shadow-lg transition-all duration-200 ease-out ${
-                isEmojiPickerOpen
-                  ? "translate-y-0 opacity-100 visible pointer-events-auto"
-                  : "translate-y-2 opacity-0 invisible pointer-events-none"
-              }`}
-            >
-              {emojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => addEmoji(emoji)}
-                  className="rounded p-1 text-xl hover:bg-gray-100"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
+          <input
+            ref={textBoxRef}
+            type="text"
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onPaste={handlePaste}
+            placeholder="Type a message..."
+            className="flex-1 rounded-lg bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            disabled={!messageInput.trim()}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
         </div>
-        <button
-          type="submit"
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-300 hover:bg-indigo-700"
-        >
-          Send
-        </button>
       </form>
+
+      {/* Emoji Picker */}
+      {isEmojiPickerOpen && (
+        <div
+          ref={emojiPickerRef}
+          className="absolute bottom-20 left-4 rounded-lg bg-gray-800 p-2 shadow-lg"
+        >
+          <div className="grid grid-cols-8 gap-1">
+            {emojis.map((emoji, index) => (
+              <button
+                key={index}
+                onClick={() => addEmoji(emoji)}
+                className="hover:bg-gray-700 rounded p-1"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Viewer */}
+      {selectedImage && (
+        <ImageViewer
+          imageUrl={selectedImage}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
     </div>
   );
 }
