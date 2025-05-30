@@ -1,4 +1,5 @@
 import type { WebSocketMessage } from "../types";
+import { AuthService } from "./auth";
 
 interface WebSocketWithCredentials extends WebSocket {
   credentials?: "include" | "omit" | "same-origin";
@@ -27,7 +28,28 @@ export class WebSocketService {
       room,
       hasToken: !!token,
     });
-    this.connect();
+    this.initialize();
+  }
+
+  private async initialize() {
+    try {
+      // First authenticate to get a session
+      if (this.token) {
+        await AuthService.authenticate(this.username, this.token, this.room);
+      }
+
+      // Check if we have a valid session
+      const session = await AuthService.checkSession();
+      if (!session.valid) {
+        throw new Error("No valid session found");
+      }
+
+      // Now connect the WebSocket
+      this.connect();
+    } catch (error) {
+      console.error("Failed to initialize WebSocket:", error);
+      this.handleError(new Event("error"));
+    }
   }
 
   private getWebSocketUrl(): string {
@@ -40,11 +62,20 @@ export class WebSocketService {
     if (this.room) params.append("room", this.room);
     if (this.token) params.append("token", this.token);
 
-    // Use the proxy path /ws instead of trying to connect directly
-    const url = `${protocol}//${
-      window.location.hostname
-    }:8080/ws?${params.toString()}`;
-    console.log("Generated WebSocket URL:", url);
+    // In development, connect to the WebSocket server directly
+    // In production, use the same host as the current page
+    const isDev = import.meta.env.DEV;
+    const devPort = import.meta.env.VITE_WS_PORT || "8080";
+    const host = isDev ? `localhost:${devPort}` : window.location.host;
+    const url = `${protocol}//${host}/ws?${params.toString()}`;
+
+    console.log("Generated WebSocket URL:", {
+      url,
+      isDev,
+      host,
+      currentHost: window.location.host,
+      devPort,
+    });
     return url;
   }
 
@@ -67,7 +98,7 @@ export class WebSocketService {
         hasToken: !!this.token,
       });
 
-      // Create WebSocket without subprotocols
+      // Create WebSocket with credentials
       this.ws = new WebSocket(wsUrl) as WebSocketWithCredentials;
       this.ws.credentials = "include";
 
