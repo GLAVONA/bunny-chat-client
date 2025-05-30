@@ -10,6 +10,7 @@ import { WebSocketService } from "./services/websocket.ts";
 
 function App() {
   const [username, setUsername] = useState<string>("");
+  const usernameRef = useRef(username);
   const [roomName, setRoomName] = useState<string>("");
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -18,107 +19,195 @@ function App() {
   const [pageToken, setPageToken] = useState<string>("");
   const ws = useRef<WebSocketService | null>(null);
   const cleanupRef = useRef<(() => void)[]>([]);
+  const messageHandlerRef = useRef<
+    ((message: WebSocketMessage) => void) | null
+  >(null);
 
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    switch (message.type) {
-      case "chat":
-        if (message.username && message.content) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: "chat",
-              sender: message.username,
-              content: message.content!,
-              timestamp: message.timestamp,
-            },
-          ]);
-        }
-        break;
-      case "image":
-        if (message.username && message.imageData) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: "image",
-              sender: message.username,
-              imageData: message.imageData,
-              imageType: message.imageType,
-              timestamp: message.timestamp,
-            },
-          ]);
-        }
-        break;
-      case "history_batch":
-        if (message.history && Array.isArray(message.history)) {
-          const historyDisplayMessages: DisplayMessage[] = message.history.map(
-            (histMsg) => ({
-              type: histMsg.type === "image" ? "image" : "chat",
-              sender: histMsg.username,
-              content: histMsg.content,
-              timestamp: histMsg.timestamp,
-              imageData: histMsg.imageData,
-              imageType: histMsg.imageType,
-            })
-          );
-          setMessages((prev) => [...historyDisplayMessages, ...prev]);
-          setHasMoreHistory(message.hasMore || false);
-          setPageToken(message.pageToken || "");
-          console.log(
-            `Displayed ${historyDisplayMessages.length} historical messages. Has more: ${message.hasMore}`
-          );
-        }
-        break;
-      case "user_list":
-        if (message.userList) {
-          setUsers(message.userList);
-        }
-        break;
-      case "notification":
-        if (message.content) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: "notification",
-              content: message.content!,
-              timestamp: new Date().toISOString(),
-            },
-          ]);
-        }
-        break;
-      case "error": {
-        const errorMessage = message.content || "An unknown error occurred.";
-        alert(`Error: ${errorMessage}`);
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
 
-        if (
-          message.content &&
-          (message.content.includes("Authentication failed") ||
-            message.content.includes("Username already exists") ||
-            message.content.includes("Invalid room name"))
-        ) {
-          handleDisconnect();
-        }
-        break;
-      }
-      case "join":
-      case "leave":
-        if (message.username && message.room) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: "notification",
-              content: `${message.username} has ${
-                message.type === "join" ? "joined" : "left"
-              } room "${message.room}".`,
-              timestamp: new Date().toISOString(),
-            },
-          ]);
+  useEffect(() => {
+    messageHandlerRef.current = (message: WebSocketMessage) => {
+      switch (message.type) {
+        case "chat":
+          if (message.username && message.content) {
+            console.log("Received chat message from server:", message);
+            setMessages((prev) => {
+              const existingMessage = prev.find((msg) => msg.id === message.id);
+              if (existingMessage) {
+                console.log("Message already exists with this ID, skipping");
+                return prev;
+              }
+
+              const newMessage: DisplayMessage = {
+                id: message.id!,
+                type: "chat",
+                sender: message.username,
+                content: message.content,
+                timestamp: message.timestamp!,
+              };
+              const newMessages = [...prev, newMessage];
+              console.log("Added new message:", newMessage);
+              return newMessages;
+            });
+          }
+          break;
+        case "image":
+          if (message.username && message.imageData) {
+            setMessages((prev) => {
+              const isOwnMessage = message.username === usernameRef.current;
+              if (isOwnMessage) {
+                const index = prev.findIndex(
+                  (msg) =>
+                    msg.type === "image" &&
+                    msg.imageData === message.imageData &&
+                    msg.sender === username
+                );
+                if (index !== -1) {
+                  const newMessages = [...prev];
+                  newMessages[index] = {
+                    ...newMessages[index],
+                    id: message.id,
+                  };
+                  return newMessages;
+                }
+              }
+              return [
+                ...prev,
+                {
+                  id: message.id,
+                  type: "image",
+                  sender: message.username,
+                  imageData: message.imageData,
+                  imageType: message.imageType,
+                  timestamp: message.timestamp,
+                },
+              ];
+            });
+          }
+          break;
+        case "reaction":
+          if (message.reactionToId !== undefined) {
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              const reactionToId = message.reactionToId;
+              if (typeof reactionToId !== "number") return newMessages;
+
+              const targetMessage = newMessages.find(
+                (msg) => msg.id === reactionToId
+              );
+              if (targetMessage) {
+                const validReactions =
+                  message.history?.filter(
+                    (reaction) =>
+                      reaction.type === "reaction" &&
+                      reaction.username &&
+                      reaction.reaction &&
+                      reaction.timestamp
+                  ) || [];
+
+                targetMessage.reactions = validReactions.map((reaction) => ({
+                  username: reaction.username!,
+                  reaction: reaction.reaction!,
+                  timestamp: reaction.timestamp,
+                }));
+              }
+              return newMessages;
+            });
+          }
+          break;
+        case "history_batch":
+          if (message.history && Array.isArray(message.history)) {
+            const historyDisplayMessages: DisplayMessage[] =
+              message.history.map((histMsg) => ({
+                id: histMsg.id,
+                type: histMsg.type === "image" ? "image" : "chat",
+                sender: histMsg.username,
+                content: histMsg.content,
+                timestamp: histMsg.timestamp,
+                imageData: histMsg.imageData,
+                imageType: histMsg.imageType,
+                reactions: (histMsg as WebSocketMessage).history
+                  ?.filter(
+                    (reaction) =>
+                      reaction.type === "reaction" &&
+                      reaction.username &&
+                      reaction.reaction &&
+                      reaction.timestamp
+                  )
+                  .map((reaction) => ({
+                    username: reaction.username,
+                    reaction: reaction.reaction!,
+                    timestamp: reaction.timestamp,
+                  })),
+              }));
+            setMessages((prev) => [...historyDisplayMessages, ...prev]);
+            setHasMoreHistory(message.hasMore || false);
+            setPageToken(message.pageToken || "");
+            console.log(
+              `Displayed ${historyDisplayMessages.length} historical messages. Has more: ${message.hasMore}`
+            );
+          }
+          break;
+        case "user_list":
           if (message.userList) {
             setUsers(message.userList);
           }
+          break;
+        case "notification":
+          if (message.content) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                type: "notification",
+                content: message.content!,
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          }
+          break;
+        case "error": {
+          const errorMessage = message.content || "An unknown error occurred.";
+          alert(`Error: ${errorMessage}`);
+
+          if (
+            message.content &&
+            (message.content.includes("Authentication failed") ||
+              message.content.includes("Username already exists") ||
+              message.content.includes("Invalid room name"))
+          ) {
+            handleDisconnect();
+          }
+          break;
         }
-        break;
-      default:
-        console.warn("Unknown message type received:", message.type, message);
+        case "join":
+        case "leave":
+          if (message.username && message.room) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                type: "notification",
+                content: `${message.username} has ${
+                  message.type === "join" ? "joined" : "left"
+                } room "${message.room}".`,
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+            if (message.userList) {
+              setUsers(message.userList);
+            }
+          }
+          break;
+        default:
+          console.warn("Unknown message type received:", message.type, message);
+      }
+    };
+  }, [username]);
+
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
+    if (messageHandlerRef.current) {
+      messageHandlerRef.current(message);
     }
   }, []);
 
@@ -129,16 +218,16 @@ function App() {
       type: "load_more_history",
       room: roomName,
       pageToken: pageToken,
-      pageSize: 50, // Use the same page size as server
+      pageSize: 50,
+      username: username,
     };
 
     ws.current.sendMessage(loadMoreMessage);
-  }, [hasMoreHistory, pageToken, roomName]);
+  }, [hasMoreHistory, pageToken, roomName, username]);
 
   const connectWebSocket = useCallback(
     async (user: string, room: string, token?: string) => {
       try {
-        // If token is provided, authenticate first
         if (token) {
           const authResponse = await AuthService.authenticate(
             user,
@@ -148,12 +237,16 @@ function App() {
           if (!authResponse.success) {
             throw new Error(authResponse.message || "Authentication failed");
           }
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        // Create new WebSocket connection
-        ws.current = new WebSocketService(user, "", token ?? "");
+        const session = await AuthService.checkSession();
+        if (!session.valid) {
+          throw new Error("No valid session found");
+        }
 
-        // Set up message handlers
+        ws.current = new WebSocketService(user, room, token ?? "");
+
         const cleanupMessage = ws.current.onMessage(handleWebSocketMessage);
         const cleanupOpen = ws.current.onOpen(() => {
           console.log("WebSocket Connected");
@@ -183,7 +276,6 @@ function App() {
           setIsConnected(false);
         });
 
-        // Store cleanup functions
         cleanupRef.current = [
           cleanupMessage,
           cleanupOpen,
@@ -202,7 +294,6 @@ function App() {
     [handleWebSocketMessage]
   );
 
-  // Check for existing session on mount
   useEffect(() => {
     let mounted = true;
 
@@ -219,43 +310,63 @@ function App() {
 
     checkSession();
 
-    // Cleanup function
     return () => {
       mounted = false;
       cleanupRef.current.forEach((cleanup) => cleanup());
-      if (ws.current) {
+      if (ws.current && !ws.current.isConnecting) {
         ws.current.disconnect();
         ws.current = null;
       }
     };
   }, [connectWebSocket]);
 
-  const handleSendMessage = useCallback(
+  const sendMessage = useCallback(
     (
       content: string,
-      imageData?: { type: "image"; imageData: string; imageType: string }
+      imageData?:
+        | { type: "image"; imageData: string; imageType: string }
+        | { type: "reaction"; reactionToId: number; reaction: string }
     ) => {
       if (!ws.current) return;
 
-      const message: WebSocketMessage = imageData
-        ? {
+      if (imageData?.type === "reaction") {
+        const targetMessage = messages.find(
+          (msg) => msg.id === imageData.reactionToId
+        );
+        if (!targetMessage) {
+          console.error("Cannot react to message: Message not found");
+          return;
+        }
+      }
+
+      let message: WebSocketMessage = {
+        type: "chat",
+        username: username,
+        room: roomName,
+        content: content,
+      };
+
+      if (imageData) {
+        if (imageData.type === "reaction") {
+          message = {
+            ...message,
+            type: "reaction",
+            reactionToId: imageData.reactionToId,
+            reaction: imageData.reaction,
+          };
+        } else if (imageData.type === "image") {
+          message = {
+            ...message,
             type: "image",
-            username: username,
-            room: roomName,
-            content: "",
             imageData: imageData.imageData,
             imageType: imageData.imageType,
-          }
-        : {
-            type: "chat",
-            username: username,
-            room: roomName,
-            content: content,
           };
+        }
+      }
 
       ws.current.sendMessage(message);
     },
-    [username, roomName]
+    [username, roomName, messages]
   );
 
   const handleDisconnect = async () => {
@@ -269,6 +380,7 @@ function App() {
         ws.current.disconnect();
         ws.current = null;
       }
+
       setUsername("");
       setRoomName("");
       setIsConnected(false);
@@ -291,7 +403,7 @@ function App() {
               <div className="flex-1 min-w-0 h-full">
                 <ChatWindow
                   messages={messages}
-                  sendMessage={handleSendMessage}
+                  sendMessage={sendMessage}
                   loadMoreHistory={loadMoreHistory}
                   hasMoreHistory={hasMoreHistory}
                   username={username}

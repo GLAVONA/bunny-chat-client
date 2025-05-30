@@ -10,9 +10,11 @@ export type MessageType =
   | "message"
   | "history_batch"
   | "load_more_history"
-  | "image";
+  | "image"
+  | "reaction";
 
 export interface WebSocketMessage {
+  id?: number;
   type: MessageType;
   username?: string;
   content?: string;
@@ -21,14 +23,19 @@ export interface WebSocketMessage {
   timestamp?: string;
   imageData?: string;
   imageType?: string;
+  reactionToId?: number;
+  reaction?: string;
   history?: Array<{
-    type: "chat" | "image";
+    id?: number;
+    type: "chat" | "image" | "reaction";
     username: string;
     content?: string;
     room: string;
     timestamp: string;
     imageData?: string;
     imageType?: string;
+    reactionToId?: number;
+    reaction?: string;
   }>;
   // Pagination fields
   pageSize?: number;
@@ -38,12 +45,20 @@ export interface WebSocketMessage {
 
 // Client-side message representation (for display)
 export interface DisplayMessage {
-  type: "chat" | "notification" | "image";
+  id?: number;
+  type: "chat" | "notification" | "image" | "reaction";
   sender?: string;
   content?: string;
-  timestamp?: string;
   imageData?: string;
   imageType?: string;
+  reactionToId?: number;
+  reaction?: string;
+  reactions?: Array<{
+    username: string;
+    reaction: string;
+    timestamp: string;
+  }>;
+  timestamp?: string;
 }
 
 // Props for components
@@ -55,7 +70,9 @@ export interface ChatWindowProps {
   messages: DisplayMessage[];
   sendMessage: (
     content: string,
-    imageData?: { type: "image"; imageData: string; imageType: string }
+    imageData?:
+      | { type: "image"; imageData: string; imageType: string }
+      | { type: "reaction"; reactionToId: number; reaction: string }
   ) => void;
   loadMoreHistory: () => void;
   hasMoreHistory: boolean;

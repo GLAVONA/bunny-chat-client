@@ -1,35 +1,52 @@
 // src/components/ChatSetup.tsx
 
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import type { ChatSetupProps } from "../types";
 
-function ChatSetup({ onConnect }: ChatSetupProps) {
+const ChatSetup = memo(function ChatSetup({ onConnect }: ChatSetupProps) {
   const [inputUsername, setInputUsername] = useState<string>("");
   const [inputRoom] = useState<string>("");
   const [inputToken, setInputToken] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputUsername.trim()) {
-      alert("Please enter a username.");
-      return;
-    }
+  const handleUsernameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInputUsername(e.target.value);
+    },
+    []
+  );
 
-    setIsLoading(true);
-    try {
-      await onConnect(
-        inputUsername.trim(),
-        inputRoom.trim(),
-        inputToken.trim()
-      );
-    } catch (error) {
-      console.error("Connection error:", error);
-      alert(error instanceof Error ? error.message : "Failed to connect");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleTokenChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInputToken(e.target.value);
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!inputUsername.trim()) {
+        alert("Please enter a username.");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        await onConnect(
+          inputUsername.trim(),
+          inputRoom.trim(),
+          inputToken.trim()
+        );
+      } catch (error) {
+        console.error("Connection error:", error);
+        alert(error instanceof Error ? error.message : "Failed to connect");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [inputUsername, inputRoom, inputToken, onConnect]
+  );
 
   return (
     <div className="flex flex-col items-center justify-center flex-1">
@@ -50,9 +67,7 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
               id="username"
               className="mt-1 block w-full px-4 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-700 text-gray-100 placeholder-gray-400 focus:ring-blue-400 focus:border-blue-400 sm:text-sm"
               value={inputUsername}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setInputUsername(e.target.value)
-              }
+              onChange={handleUsernameChange}
               placeholder="Your username"
               required
             />
@@ -70,9 +85,7 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
               id="token"
               className="mt-1 block w-full px-4 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-700 text-gray-100 placeholder-gray-400 focus:ring-blue-400 focus:border-blue-400 sm:text-sm"
               value={inputToken}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setInputToken(e.target.value)
-              }
+              onChange={handleTokenChange}
               placeholder="Paste your auth token here (e.g., supersecrettoken1)"
             />
           </div>
@@ -89,6 +102,6 @@ function ChatSetup({ onConnect }: ChatSetupProps) {
       </div>
     </div>
   );
-}
+});
 
 export default ChatSetup;

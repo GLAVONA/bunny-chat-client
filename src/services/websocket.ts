@@ -1,7 +1,7 @@
-import type { WebSocketMessage } from '../types';
+import type { WebSocketMessage } from "../types";
 
 interface WebSocketWithCredentials extends WebSocket {
-  credentials?: 'include' | 'omit' | 'same-origin';
+  credentials?: "include" | "omit" | "same-origin";
 }
 
 type MessageHandler = (data: WebSocketMessage) => void;
@@ -15,42 +15,44 @@ export class WebSocketService {
   private errorHandlers: Set<ErrorHandler> = new Set();
   private closeHandlers: Set<CloseHandler> = new Set();
   private openHandlers: Set<OpenHandler> = new Set();
-  private isConnecting = false;
+  isConnecting = false;
 
   constructor(
     private username: string,
     private room: string,
     private token: string
   ) {
-    console.log('WebSocketService constructor called with:', {
+    console.log("WebSocketService constructor called with:", {
       username,
       room,
-      hasToken: !!token
+      hasToken: !!token,
     });
     this.connect();
   }
 
   private getWebSocketUrl(): string {
     // Use relative URL for WebSocket to work with Vite's proxy
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const params = new URLSearchParams();
-    
+
     // Ensure parameters are properly encoded
-    if (this.username) params.append('username', this.username);
-    if (this.room) params.append('room', this.room);
-    if (this.token) params.append('token', this.token);
-    
-    const url = `${protocol}//${host}/ws?${params.toString()}`;
-    console.log('Generated WebSocket URL:', url);
+    if (this.username) params.append("username", this.username);
+    if (this.room) params.append("room", this.room);
+    if (this.token) params.append("token", this.token);
+
+    // Use the proxy path /ws instead of trying to connect directly
+    const url = `${protocol}//${
+      window.location.hostname
+    }:8080/ws?${params.toString()}`;
+    console.log("Generated WebSocket URL:", url);
     return url;
   }
 
   private connect() {
     if (this.isConnecting || this.ws?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connecting or connected:', {
+      console.log("WebSocket already connecting or connected:", {
         isConnecting: this.isConnecting,
-        readyState: this.ws?.readyState
+        readyState: this.ws?.readyState,
       });
       return;
     }
@@ -58,26 +60,28 @@ export class WebSocketService {
     this.isConnecting = true;
     try {
       const wsUrl = this.getWebSocketUrl();
-      console.log('Attempting WebSocket connection:', { 
-        url: wsUrl, 
-        username: this.username, 
+      console.log("Attempting WebSocket connection:", {
+        url: wsUrl,
+        username: this.username,
         room: this.room,
-        hasToken: !!this.token
+        hasToken: !!this.token,
       });
-      
+
       // Create WebSocket without subprotocols
       this.ws = new WebSocket(wsUrl) as WebSocketWithCredentials;
-      this.ws.credentials = 'include';
-      
+      this.ws.credentials = "include";
+
       // Disable compression if available
-      if ('perMessageDeflate' in this.ws) {
-        (this.ws as WebSocket & { perMessageDeflate: boolean }).perMessageDeflate = false;
+      if ("perMessageDeflate" in this.ws) {
+        (
+          this.ws as WebSocket & { perMessageDeflate: boolean }
+        ).perMessageDeflate = false;
       }
-      
+
       this.setupEventHandlers();
     } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
-      this.handleError(new Event('error'));
+      console.error("Error creating WebSocket connection:", error);
+      this.handleError(new Event("error"));
       this.isConnecting = false;
     }
   }
@@ -86,80 +90,81 @@ export class WebSocketService {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket connection established:', {
+      console.log("WebSocket connection established:", {
         readyState: this.ws?.readyState,
         protocol: this.ws?.protocol,
         url: this.ws?.url,
-        extensions: this.ws?.extensions
+        extensions: this.ws?.extensions,
       });
       this.isConnecting = false;
-      this.openHandlers.forEach(handler => handler());
+      this.openHandlers.forEach((handler) => handler());
     };
 
     this.ws.onmessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as WebSocketMessage;
-        console.log('Received WebSocket message:', {
+        console.log("Received WebSocket message:", {
           type: data.type,
           data: data,
           readyState: this.ws?.readyState,
-          protocol: this.ws?.protocol
+          protocol: this.ws?.protocol,
         });
-        this.messageHandlers.forEach(handler => handler(data));
+        this.messageHandlers.forEach((handler) => handler(data));
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error, event.data);
+        console.error("Error parsing WebSocket message:", error, event.data);
       }
     };
 
     this.ws.onclose = (event: CloseEvent) => {
-      console.log('WebSocket connection closed:', {
+      console.log("WebSocket connection closed:", {
         code: event.code,
         reason: event.reason,
         wasClean: event.wasClean,
         readyState: this.ws?.readyState,
         url: this.ws?.url,
-        protocol: this.ws?.protocol
+        protocol: this.ws?.protocol,
       });
       this.isConnecting = false;
-      this.closeHandlers.forEach(handler => handler(event));
+      this.closeHandlers.forEach((handler) => handler(event));
     };
 
     this.ws.onerror = (error: Event) => {
-      console.error('WebSocket error:', {
+      console.error("WebSocket error:", {
         error,
         readyState: this.ws?.readyState,
         url: this.ws?.url,
-        protocol: this.ws?.protocol
+        protocol: this.ws?.protocol,
       });
-      this.errorHandlers.forEach(handler => handler(error));
+
+      this.errorHandlers.forEach((handler) => handler(error));
     };
   }
 
   private handleError(error: Event) {
-    console.error('WebSocket error:', {
+    console.error("WebSocket error:", {
       error,
       readyState: this.ws?.readyState,
       url: this.ws?.url,
-      protocol: this.ws?.protocol
+      protocol: this.ws?.protocol,
     });
-    this.errorHandlers.forEach(handler => handler(error));
+    this.errorHandlers.forEach((handler) => handler(error));
   }
 
   public sendMessage(message: WebSocketMessage) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('Sending WebSocket message:', {
+      console.log("Sending WebSocket message:", {
         message,
         readyState: this.ws?.readyState,
-        protocol: this.ws?.protocol
+        protocol: this.ws?.protocol,
       });
       this.ws.send(JSON.stringify(message));
     } else {
-      console.error('WebSocket is not connected:', {
+      console.error("WebSocket is not connected:", {
         readyState: this.ws?.readyState,
         url: this.ws?.url,
-        protocol: this.ws?.protocol
+        protocol: this.ws?.protocol,
       });
-      throw new Error('WebSocket is not connected');
+      throw new Error("WebSocket is not connected");
     }
   }
 
@@ -184,18 +189,18 @@ export class WebSocketService {
   }
 
   public disconnect() {
-    console.warn('Disconnecting WebSocket:', {
+    console.warn("Disconnecting WebSocket:", {
       readyState: this.ws?.readyState,
       url: this.ws?.url,
-      protocol: this.ws?.protocol
+      protocol: this.ws?.protocol,
     });
-    
+
     if (this.ws) {
-      console.log('Closing WebSocket connection');
+      console.log("Closing WebSocket connection");
       try {
-        this.ws.close(1000, 'Client disconnecting');
+        this.ws.close(1000, "Client disconnecting");
       } catch (error) {
-        console.error('Error during WebSocket close:', error);
+        console.error("Error during WebSocket close:", error);
       } finally {
         this.ws = null;
       }
@@ -207,4 +212,4 @@ export class WebSocketService {
     this.closeHandlers.clear();
     this.openHandlers.clear();
   }
-} 
+}

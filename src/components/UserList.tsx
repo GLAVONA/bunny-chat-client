@@ -1,6 +1,26 @@
+import { memo } from "react";
 import type { UserListProps } from "../types";
 
-function UserList({ users, currentUser }: UserListProps) {
+const UserItem = memo(
+  ({ user, isCurrentUser }: { user: string; isCurrentUser: boolean }) => (
+    <li
+      className={`flex items-center p-2 rounded-md ${
+        isCurrentUser
+          ? "bg-indigo-500/30 font-semibold text-indigo-100"
+          : "text-gray-100 hover:bg-slate-600/30"
+      }`}
+    >
+      <span
+        className={`w-2.5 h-2.5 rounded-full mr-2 ${
+          isCurrentUser ? "bg-indigo-300" : "bg-emerald-300"
+        }`}
+      ></span>
+      {user} {isCurrentUser && "(You)"}
+    </li>
+  )
+);
+
+const UserList = memo(function UserList({ users, currentUser }: UserListProps) {
   return (
     <div className="flex flex-col h-full">
       <h2 className="text-xl font-bold text-gray-100 mb-4 pb-2 border-b border-slate-500">
@@ -12,27 +32,17 @@ function UserList({ users, currentUser }: UserListProps) {
         ) : (
           <ul className="space-y-2">
             {users.map((user: string, index: number) => (
-              <li
-                key={index}
-                className={`flex items-center p-2 rounded-md ${
-                  user === currentUser
-                    ? "bg-indigo-500/30 font-semibold text-indigo-100"
-                    : "text-gray-100 hover:bg-slate-600/30"
-                }`}
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                    user === currentUser ? "bg-indigo-300" : "bg-emerald-300"
-                  }`}
-                ></span>
-                {user} {user === currentUser && "(You)"}
-              </li>
+              <UserItem
+                key={`${user}-${index}`}
+                user={user}
+                isCurrentUser={user === currentUser}
+              />
             ))}
           </ul>
         )}
       </div>
     </div>
   );
-}
+});
 
 export default UserList;
