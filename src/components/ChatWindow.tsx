@@ -130,46 +130,53 @@ const Message = memo(
           )}
           {message.imageData ? (
             <div className="relative group">
-              <button
-                ref={buttonRef}
-                className={`absolute -top-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
-                  isOwnMessage ? "-left-5" : "-right-5"
-                }`}
-                onClick={() => setShowReactions(!showReactions)}
-                onBlur={() => setTimeout(() => setShowReactions(false), 200)}
-              >
-                <span>😀</span>
-              </button>
-              {showReactions && (
-                <div
-                  ref={popupRef}
-                  className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
-                    isOwnMessage ? "left-0" : "right-0"
-                  }`}
-                  style={{ minWidth: "200px" }}
-                >
-                  <div className="grid grid-cols-4 gap-2">
-                    {REACTIONS.map((reaction) => {
-                      const userHasReacted = userReactions.includes(reaction);
-                      return (
-                        <button
-                          key={reaction}
-                          className={`p-2 rounded-lg transition-colors ${
-                            userHasReacted
-                              ? "bg-indigo-600 text-white"
-                              : "hover:bg-gray-700 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            onReaction(message.id, reaction);
-                            setShowReactions(false);
-                          }}
-                        >
-                          {reaction}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              {!isNotification && (
+                <>
+                  <button
+                    ref={buttonRef}
+                    className={`absolute -top-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
+                      isOwnMessage ? "-left-5" : "-right-5"
+                    }`}
+                    onClick={() => setShowReactions(!showReactions)}
+                    onBlur={() =>
+                      setTimeout(() => setShowReactions(false), 200)
+                    }
+                  >
+                    <span>😀</span>
+                  </button>
+                  {showReactions && (
+                    <div
+                      ref={popupRef}
+                      className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
+                        isOwnMessage ? "left-0" : "right-0"
+                      }`}
+                      style={{ minWidth: "200px" }}
+                    >
+                      <div className="grid grid-cols-4 gap-2">
+                        {REACTIONS.map((reaction) => {
+                          const userHasReacted =
+                            userReactions.includes(reaction);
+                          return (
+                            <button
+                              key={reaction}
+                              className={`p-2 rounded-lg transition-colors ${
+                                userHasReacted
+                                  ? "bg-indigo-600 text-white"
+                                  : "hover:bg-gray-700 text-gray-200"
+                              }`}
+                              onClick={() => {
+                                onReaction(message.id, reaction);
+                                setShowReactions(false);
+                              }}
+                            >
+                              {reaction}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <img
                 src={message.imageData}
@@ -178,55 +185,72 @@ const Message = memo(
                 style={{ maxHeight: "300px" }}
                 onClick={() => onImageClick(message.imageData!)}
               />
-              <MessageReactions message={message} currentUsername={username} />
+              {!isNotification && (
+                <MessageReactions
+                  message={message}
+                  currentUsername={username}
+                />
+              )}
             </div>
           ) : (
             <div className="relative group">
-              <button
-                ref={buttonRef}
-                className={`absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
-                  isOwnMessage ? "-left-7" : "-right-7"
-                }`}
-                onClick={() => setShowReactions(!showReactions)}
-                onBlur={() => setTimeout(() => setShowReactions(false), 200)}
-              >
-                <span>😀</span>
-              </button>
-              {showReactions && (
-                <div
-                  ref={popupRef}
-                  className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
-                    isOwnMessage ? "left-0" : "right-0"
-                  }`}
-                  style={{ minWidth: "200px" }}
-                >
-                  <div className="grid grid-cols-4 gap-2">
-                    {REACTIONS.map((reaction) => {
-                      const userHasReacted = userReactions.includes(reaction);
-                      return (
-                        <button
-                          key={reaction}
-                          className={`p-2 rounded-lg transition-colors ${
-                            userHasReacted
-                              ? "bg-indigo-600 text-white"
-                              : "hover:bg-gray-700 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            onReaction(message.id, reaction);
-                            setShowReactions(false);
-                          }}
-                        >
-                          {reaction}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              {!isNotification && (
+                <>
+                  <button
+                    ref={buttonRef}
+                    className={`absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
+                      isOwnMessage ? "-left-7" : "-right-7"
+                    }`}
+                    onClick={() => setShowReactions(!showReactions)}
+                    onBlur={() =>
+                      setTimeout(() => setShowReactions(false), 200)
+                    }
+                  >
+                    <span>😀</span>
+                  </button>
+                  {showReactions && (
+                    <div
+                      ref={popupRef}
+                      className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
+                        isOwnMessage ? "left-0" : "right-0"
+                      }`}
+                      style={{ minWidth: "200px" }}
+                    >
+                      <div className="grid grid-cols-4 gap-2">
+                        {REACTIONS.map((reaction) => {
+                          const userHasReacted =
+                            userReactions.includes(reaction);
+                          return (
+                            <button
+                              key={reaction}
+                              className={`p-2 rounded-lg transition-colors ${
+                                userHasReacted
+                                  ? "bg-indigo-600 text-white"
+                                  : "hover:bg-gray-700 text-gray-200"
+                              }`}
+                              onClick={() => {
+                                onReaction(message.id, reaction);
+                                setShowReactions(false);
+                              }}
+                            >
+                              {reaction}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <div className="break-words whitespace-pre-wrap">
                 {makeLinksClickable(message.content || "")}
               </div>
-              <MessageReactions message={message} currentUsername={username} />
+              {!isNotification && (
+                <MessageReactions
+                  message={message}
+                  currentUsername={username}
+                />
+              )}
             </div>
           )}
           {!isNotification && (
