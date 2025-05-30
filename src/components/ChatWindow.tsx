@@ -27,32 +27,23 @@ const makeLinksClickable = (text: string) => {
 
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🎉", "🔥"];
 
-// Memoize the Message component
-const Message = memo(
+// Reaction Button Component
+const ReactionButton = memo(
   ({
-    message,
-    username,
+    isOwnMessage,
     onReaction,
-    onImageClick,
+    messageId,
+    userReactions,
   }: {
-    message: DisplayMessage;
-    username: string;
+    isOwnMessage: boolean;
     onReaction: (messageId: number | undefined, reaction: string) => void;
-    onImageClick: (imageData: string) => void;
+    messageId: number | undefined;
+    userReactions: string[];
   }) => {
-    const isNotification = message.type === "notification";
-    const isOwnMessage = message.sender === username;
     const [showReactions, setShowReactions] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
 
-    // Helper: which reactions has the current user made?
-    const userReactions =
-      message.reactions
-        ?.filter((r) => r.username === username)
-        .map((r) => r.reaction) || [];
-
-    // Handle popup positioning
     useEffect(() => {
       if (showReactions && buttonRef.current && popupRef.current) {
         const buttonRect = buttonRef.current.getBoundingClientRect();
@@ -69,15 +60,12 @@ const Message = memo(
           buttonRect.left - popupRect.width < chatWindowRect.left;
 
         if (wouldOverflowRight) {
-          // Position popup to the left of the button
           popupRef.current.style.right = "0";
           popupRef.current.style.left = "auto";
         } else if (wouldOverflowLeft) {
-          // Position popup to the right of the button
           popupRef.current.style.left = "0";
           popupRef.current.style.right = "auto";
         } else {
-          // Position popup based on message alignment
           if (isOwnMessage) {
             popupRef.current.style.right = "0";
             popupRef.current.style.left = "auto";
@@ -91,13 +79,11 @@ const Message = memo(
         const wouldOverflowTop =
           buttonRect.top - popupRect.height < chatWindowRect.top;
         if (wouldOverflowTop) {
-          // Position popup below the button
           popupRef.current.style.top = "100%";
           popupRef.current.style.bottom = "auto";
           popupRef.current.style.marginTop = "0.5rem";
           popupRef.current.style.marginBottom = "0";
         } else {
-          // Position popup above the button
           popupRef.current.style.bottom = "100%";
           popupRef.current.style.top = "auto";
           popupRef.current.style.marginBottom = "0.5rem";
@@ -106,6 +92,69 @@ const Message = memo(
       }
     }, [showReactions, isOwnMessage]);
 
+    return (
+      <>
+        <button
+          ref={buttonRef}
+          className={`absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
+            isOwnMessage ? "-left-7" : "-right-7"
+          }`}
+          onClick={() => setShowReactions(!showReactions)}
+          onBlur={() => setTimeout(() => setShowReactions(false), 200)}
+        >
+          <span>😀</span>
+        </button>
+        {showReactions && (
+          <div
+            ref={popupRef}
+            className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
+              isOwnMessage ? "left-0" : "right-0"
+            }`}
+            style={{ minWidth: "200px" }}
+          >
+            <div className="grid grid-cols-4 gap-2">
+              {REACTIONS.map((reaction) => {
+                const userHasReacted = userReactions.includes(reaction);
+                return (
+                  <button
+                    key={reaction}
+                    className={`p-2 rounded-lg transition-colors ${
+                      userHasReacted
+                        ? "bg-indigo-600 text-white"
+                        : "hover:bg-gray-700 text-gray-200"
+                    }`}
+                    onClick={() => {
+                      onReaction(messageId, reaction);
+                      setShowReactions(false);
+                    }}
+                  >
+                    {reaction}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+);
+
+// Message Container Component
+const MessageContainer = memo(
+  ({
+    isNotification,
+    isOwnMessage,
+    sender,
+    username,
+    children,
+  }: {
+    isNotification: boolean;
+    isOwnMessage: boolean;
+    sender?: string;
+    username: string;
+    children: React.ReactNode;
+  }) => {
     return (
       <div
         className={`flex ${
@@ -125,141 +174,123 @@ const Message = memo(
               : "bg-gray-700 text-white"
           }`}
         >
-          {!isNotification && message.sender !== username && (
-            <div className="text-xs text-gray-300 mb-1">{message.sender}</div>
+          {!isNotification && sender && sender !== username && (
+            <div className="text-xs text-gray-300 mb-1">{sender}</div>
           )}
-          {message.imageData ? (
-            <div className="relative group">
-              {!isNotification && (
-                <>
-                  <button
-                    ref={buttonRef}
-                    className={`absolute -top-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
-                      isOwnMessage ? "-left-5" : "-right-5"
-                    }`}
-                    onClick={() => setShowReactions(!showReactions)}
-                    onBlur={() =>
-                      setTimeout(() => setShowReactions(false), 200)
-                    }
-                  >
-                    <span>😀</span>
-                  </button>
-                  {showReactions && (
-                    <div
-                      ref={popupRef}
-                      className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
-                        isOwnMessage ? "left-0" : "right-0"
-                      }`}
-                      style={{ minWidth: "200px" }}
-                    >
-                      <div className="grid grid-cols-4 gap-2">
-                        {REACTIONS.map((reaction) => {
-                          const userHasReacted =
-                            userReactions.includes(reaction);
-                          return (
-                            <button
-                              key={reaction}
-                              className={`p-2 rounded-lg transition-colors ${
-                                userHasReacted
-                                  ? "bg-indigo-600 text-white"
-                                  : "hover:bg-gray-700 text-gray-200"
-                              }`}
-                              onClick={() => {
-                                onReaction(message.id, reaction);
-                                setShowReactions(false);
-                              }}
-                            >
-                              {reaction}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              <img
-                src={message.imageData}
-                alt="Shared"
-                className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ maxHeight: "300px" }}
-                onClick={() => onImageClick(message.imageData!)}
-              />
-              {!isNotification && (
-                <MessageReactions
-                  message={message}
-                  currentUsername={username}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="relative group">
-              {!isNotification && (
-                <>
-                  <button
-                    ref={buttonRef}
-                    className={`absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-600 rounded-full text-gray-400 hover:text-gray-200 bg-gray-800 shadow-sm ${
-                      isOwnMessage ? "-left-7" : "-right-7"
-                    }`}
-                    onClick={() => setShowReactions(!showReactions)}
-                    onBlur={() =>
-                      setTimeout(() => setShowReactions(false), 200)
-                    }
-                  >
-                    <span>😀</span>
-                  </button>
-                  {showReactions && (
-                    <div
-                      ref={popupRef}
-                      className={`absolute bg-gray-800 rounded-lg shadow-lg p-2 z-50 ${
-                        isOwnMessage ? "left-0" : "right-0"
-                      }`}
-                      style={{ minWidth: "200px" }}
-                    >
-                      <div className="grid grid-cols-4 gap-2">
-                        {REACTIONS.map((reaction) => {
-                          const userHasReacted =
-                            userReactions.includes(reaction);
-                          return (
-                            <button
-                              key={reaction}
-                              className={`p-2 rounded-lg transition-colors ${
-                                userHasReacted
-                                  ? "bg-indigo-600 text-white"
-                                  : "hover:bg-gray-700 text-gray-200"
-                              }`}
-                              onClick={() => {
-                                onReaction(message.id, reaction);
-                                setShowReactions(false);
-                              }}
-                            >
-                              {reaction}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="break-words whitespace-pre-wrap">
-                {makeLinksClickable(message.content || "")}
-              </div>
-              {!isNotification && (
-                <MessageReactions
-                  message={message}
-                  currentUsername={username}
-                />
-              )}
-            </div>
-          )}
-          {!isNotification && (
-            <div className="text-xs text-gray-300 mt-1">
-              {new Date(message.timestamp || "").toLocaleTimeString()}
-            </div>
-          )}
+          {children}
         </div>
       </div>
+    );
+  }
+);
+
+// Message Content Component
+const MessageContent = memo(
+  ({
+    message,
+    isNotification,
+    isOwnMessage,
+    username,
+    onReaction,
+    onImageClick,
+    userReactions,
+  }: {
+    message: DisplayMessage;
+    isNotification: boolean;
+    isOwnMessage: boolean;
+    username: string;
+    onReaction: (messageId: number | undefined, reaction: string) => void;
+    onImageClick: (imageData: string) => void;
+    userReactions: string[];
+  }) => {
+    if (message.imageData) {
+      return (
+        <div className="relative group">
+          {!isNotification && (
+            <ReactionButton
+              isOwnMessage={isOwnMessage}
+              onReaction={onReaction}
+              messageId={message.id}
+              userReactions={userReactions}
+            />
+          )}
+          <img
+            src={message.imageData}
+            alt="Shared"
+            className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ maxHeight: "300px" }}
+            onClick={() => onImageClick(message.imageData!)}
+          />
+          {!isNotification && (
+            <MessageReactions message={message} currentUsername={username} />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative group">
+        {!isNotification && (
+          <ReactionButton
+            isOwnMessage={isOwnMessage}
+            onReaction={onReaction}
+            messageId={message.id}
+            userReactions={userReactions}
+          />
+        )}
+        <div className="break-words whitespace-pre-wrap">
+          {makeLinksClickable(message.content || "")}
+        </div>
+        {!isNotification && (
+          <MessageReactions message={message} currentUsername={username} />
+        )}
+      </div>
+    );
+  }
+);
+
+// Memoize the Message component
+const Message = memo(
+  ({
+    message,
+    username,
+    onReaction,
+    onImageClick,
+  }: {
+    message: DisplayMessage;
+    username: string;
+    onReaction: (messageId: number | undefined, reaction: string) => void;
+    onImageClick: (imageData: string) => void;
+  }) => {
+    const isNotification = message.type === "notification";
+    const isOwnMessage = message.sender === username;
+    const userReactions =
+      message.reactions
+        ?.filter((r) => r.username === username)
+        .map((r) => r.reaction) || [];
+
+    return (
+      <MessageContainer
+        isNotification={isNotification}
+        isOwnMessage={isOwnMessage}
+        sender={message.sender}
+        username={username}
+      >
+        <MessageContent
+          message={message}
+          isNotification={isNotification}
+          isOwnMessage={isOwnMessage}
+          username={username}
+          onReaction={onReaction}
+          onImageClick={onImageClick}
+          userReactions={userReactions}
+        />
+        {!isNotification && (
+          <div className="text-xs text-gray-300 mt-1">
+            {new Date(message.timestamp || "").toLocaleTimeString()}
+          </div>
+        )}
+      </MessageContainer>
     );
   }
 );
