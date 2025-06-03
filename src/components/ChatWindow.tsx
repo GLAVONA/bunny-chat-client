@@ -133,7 +133,7 @@ const MessageContainer = memo(
               {sender}
             </Text>
           )}
-          <Text
+          <Box
             c={isOwnMessage ? "white" : "gray.0"}
             style={{
               whiteSpace: "pre-wrap",
@@ -142,7 +142,7 @@ const MessageContainer = memo(
             }}
           >
             {children}
-          </Text>
+          </Box>
         </Paper>
       </Group>
     );
@@ -271,11 +271,17 @@ const MessageContent = memo(
         userReactions={userReactions}
         reactions={message.reactions}
       >
-        <Text size="sm">
-          {isNotification
-            ? message.content
-            : makeLinksClickable(message.content || "")}
-        </Text>
+        <Box>
+          {isNotification ? (
+            <Text size="sm" component="span">
+              {message.content}
+            </Text>
+          ) : (
+            <Box component="span">
+              {makeLinksClickable(message.content || "")}
+            </Box>
+          )}
+        </Box>
       </MessageContentWrapper>
     );
   }
@@ -461,7 +467,7 @@ function ChatWindow({
       styles={{
         root: {
           padding: "0",
-          "@media (min-width: 768px)": {
+          "@media (minWidth: 768px)": {
             padding: "1rem",
           },
         },
