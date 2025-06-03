@@ -287,6 +287,47 @@ const MessageContent = memo(
   }
 );
 
+// Memoize the message list rendering
+const MessageList = memo(
+  ({
+    messages,
+    username,
+    onReaction,
+    onImageClick,
+  }: {
+    messages: DisplayMessage[];
+    username: string;
+    onReaction: (messageId: number | undefined, reaction: string) => void;
+    onImageClick: (imageData: string, imageType: string) => void;
+  }) => {
+    return (
+      <Stack gap="xs" p="md">
+        {messages.map((message, index) => {
+          const isOwnMessage = message.sender === username;
+          const isNotification = message.type === "notification";
+          return (
+            <MessageContainer
+              key={message.id || index}
+              isNotification={isNotification}
+              isOwnMessage={isOwnMessage}
+              sender={message.sender}
+            >
+              <MessageContent
+                message={message}
+                isNotification={isNotification}
+                isOwnMessage={isOwnMessage}
+                username={username}
+                onReaction={onReaction}
+                onImageClick={onImageClick}
+              />
+            </MessageContainer>
+          );
+        })}
+      </Stack>
+    );
+  }
+);
+
 // Main ChatWindow Component
 function ChatWindow({
   messages,
@@ -304,7 +345,6 @@ function ChatWindow({
   } | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const initialLoadDoneRef = useRef<boolean>(false);
   const oldScrollHeightRef = useRef<number>(0);
@@ -369,20 +409,21 @@ function ChatWindow({
     prevMessagesLengthRef.current = messages.length;
   }, [messages, isLoadingMore]);
 
+  // Memoize the scroll handler
   const handleScroll = useCallback(() => {
-    if (chatContainerRef.current) {
-      const { scrollTop } = chatContainerRef.current;
-      if (scrollTop === 0 && hasMoreHistory && !isLoadingMore) {
-        // Save current scroll position and height before loading more
-        oldScrollHeightRef.current = chatContainerRef.current.scrollHeight;
-        oldScrollTopRef.current = chatContainerRef.current.scrollTop;
-        pendingScrollAdjustmentRef.current = true;
-        setIsLoadingMore(true);
-        loadMoreHistory();
-      }
+    if (!chatContainerRef.current) return;
+
+    const { scrollTop } = chatContainerRef.current;
+    if (scrollTop === 0 && hasMoreHistory && !isLoadingMore) {
+      oldScrollHeightRef.current = chatContainerRef.current.scrollHeight;
+      oldScrollTopRef.current = chatContainerRef.current.scrollTop;
+      pendingScrollAdjustmentRef.current = true;
+      setIsLoadingMore(true);
+      loadMoreHistory();
     }
   }, [hasMoreHistory, loadMoreHistory, isLoadingMore]);
 
+  // Memoize the send message handler
   const handleSendMessage = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -410,6 +451,7 @@ function ChatWindow({
     [inputMessage, selectedFile, sendMessage]
   );
 
+  // Memoize the file select handler
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -422,6 +464,7 @@ function ChatWindow({
     []
   );
 
+  // Memoize the image click handler
   const handleImageClick = useCallback(
     (imageData: string, imageType: string) => {
       setSelectedImage({ url: imageData, type: imageType });
@@ -429,6 +472,7 @@ function ChatWindow({
     []
   );
 
+  // Memoize the reaction handler
   const handleReaction = useCallback(
     (messageId: number | undefined, reaction: string) => {
       if (messageId !== undefined) {
@@ -442,6 +486,7 @@ function ChatWindow({
     [sendMessage]
   );
 
+  // Memoize the paste handler
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -459,6 +504,23 @@ function ChatWindow({
       }
     }
   }, []);
+
+  // Memoize the input change handler
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInputMessage(e.target.value);
+    },
+    []
+  );
+
+  // Cleanup function for preview URLs
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   return (
     <Container
@@ -488,99 +550,62 @@ function ChatWindow({
           onScrollPositionChange={handleScroll}
           h="calc(100vh - 200px)"
         >
-          <Stack gap="xs" p="md">
-            {messages.map((message, index) => {
-              const isOwnMessage = message.sender === username;
-              const isNotification = message.type === "notification";
-              return (
-                <MessageContainer
-                  key={message.id || index}
-                  isNotification={isNotification}
-                  isOwnMessage={isOwnMessage}
-                  sender={message.sender}
-                >
-                  <MessageContent
-                    message={message}
-                    isNotification={isNotification}
-                    isOwnMessage={isOwnMessage}
-                    username={username}
-                    onReaction={handleReaction}
-                    onImageClick={handleImageClick}
-                  />
-                </MessageContainer>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </Stack>
+          <MessageList
+            messages={messages}
+            username={username}
+            onReaction={handleReaction}
+            onImageClick={handleImageClick}
+          />
         </ScrollArea>
 
-        <Paper p="md" radius="md" withBorder>
-          <form onSubmit={handleSendMessage}>
-            <Stack>
-              {previewUrl && (
-                <Box>
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    style={{ maxHeight: "200px", borderRadius: "4px" }}
-                  />
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    size="xs"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </Box>
-              )}
-              <Group>
-                <TextInput
-                  placeholder="Type a message..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onPaste={handlePaste}
-                  style={{ flex: 1 }}
-                />
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                />
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <MdImage size={20} />
-                </ActionIcon>
-                <Button
-                  type="submit"
-                  variant="filled"
-                  color="blue"
-                  disabled={!inputMessage.trim() && !selectedFile}
-                >
-                  <MdSend size={20} />
-                </Button>
-              </Group>
-            </Stack>
-          </form>
-        </Paper>
-      </Stack>
+        <form onSubmit={handleSendMessage}>
+          <Group>
+            <TextInput
+              value={inputMessage}
+              onChange={handleInputChange}
+              onPaste={handlePaste}
+              placeholder="Type a message..."
+              style={{ flex: 1 }}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              style={{ display: "none" }}
+            />
+            <ActionIcon
+              variant="subtle"
+              color="blue"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <MdImage size={20} />
+            </ActionIcon>
+            <Button type="submit" variant="filled" color="blue">
+              <MdSend size={20} />
+            </Button>
+          </Group>
+        </form>
 
-      {selectedImage && (
-        <ImageViewer
-          imageUrl={selectedImage.url}
-          onClose={() => setSelectedImage(null)}
-        />
-      )}
+        {previewUrl && (
+          <Box>
+            <img
+              src={previewUrl}
+              alt="Preview"
+              style={{ maxWidth: "200px", maxHeight: "200px" }}
+            />
+          </Box>
+        )}
+
+        {selectedImage && (
+          <ImageViewer
+            imageUrl={selectedImage.url}
+            onClose={() => setSelectedImage(null)}
+          />
+        )}
+      </Stack>
     </Container>
   );
 }
 
-export default ChatWindow;
+export default memo(ChatWindow);
