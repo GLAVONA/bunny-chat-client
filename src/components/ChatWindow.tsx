@@ -12,7 +12,7 @@ import {
   ScrollArea,
   Box,
 } from "@mantine/core";
-import { MdSend, MdEmojiEmotions, MdImage } from "react-icons/md";
+import { MdSend, MdEmojiEmotions, MdImage, MdClose } from "react-icons/md";
 import type { ChatWindowProps, DisplayMessage } from "../types";
 import ImageViewer from "./ImageViewer";
 import { MessageReactions } from "./MessageReactions";
@@ -513,6 +513,15 @@ function ChatWindow({
     []
   );
 
+  // Memoize the remove preview handler
+  const handleRemovePreview = useCallback(() => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  }, [previewUrl]);
+
   // Cleanup function for preview URLs
   useEffect(() => {
     return () => {
@@ -589,11 +598,22 @@ function ChatWindow({
 
         {previewUrl && (
           <Box>
-            <img
-              src={previewUrl}
-              alt="Preview"
-              style={{ maxWidth: "200px", maxHeight: "200px" }}
-            />
+            <Stack gap="xs" align="center">
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{ maxWidth: "200px", maxHeight: "200px" }}
+              />
+              <Button
+                variant="subtle"
+                color="red"
+                size="xs"
+                leftSection={<MdClose size={16} />}
+                onClick={handleRemovePreview}
+              >
+                Remove image
+              </Button>
+            </Stack>
           </Box>
         )}
 

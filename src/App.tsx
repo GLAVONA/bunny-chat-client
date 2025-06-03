@@ -38,20 +38,13 @@ function App() {
 
   useEffect(() => {
     const handleFocus = () => {
-      console.log("Window focused, resetting hasNewMessage");
       setHasNewMessage(false);
     };
 
-    const handleBlur = () => {
-      console.log("Window blurred");
-    };
-
     window.addEventListener("focus", handleFocus);
-    window.addEventListener("blur", handleBlur);
 
     return () => {
       window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("blur", handleBlur);
     };
   }, []);
 
