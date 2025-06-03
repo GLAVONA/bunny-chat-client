@@ -1,51 +1,80 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useCallback, useRef } from "react";
+import { Modal, Image } from "@mantine/core";
 
 interface ImageViewerProps {
   imageUrl: string;
   onClose: () => void;
 }
 
-function ImageViewer({ imageUrl, onClose }: ImageViewerProps) {
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [transformOrigin, setTransformOrigin] = useState("center");
-  const imageRef = useRef<HTMLImageElement>(null);
+const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, onClose }) => {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current) return;
 
-    if (imageRef.current) {
-      const rect = imageRef.current.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      setTransformOrigin(`${x}% ${y}%`);
-    }
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
 
-    setIsZoomed(!isZoomed);
-  };
+      // Calculate click position relative to container
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Calculate click position as percentage
+      const xPercent = x / rect.width;
+      const yPercent = y / rect.height;
+
+      // Toggle between zoomed and normal state
+      if (scale === 1) {
+        setScale(2);
+        // Calculate new position to center on click point
+        setPosition({
+          x: (0.5 - xPercent) * 100, // Inverted x-axis calculation
+          y: (0.5 - yPercent) * 100, // Inverted y-axis calculation
+        });
+      } else {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      }
+    },
+    [scale]
+  );
 
   return (
-    <div
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
-      onClick={onClose}
+    <Modal
+      opened={true}
+      onClose={onClose}
+      size="xl"
+      centered
+      withCloseButton
+      title="Image Preview"
     >
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl"
+      <div
+        ref={containerRef}
+        style={{
+          overflow: "hidden",
+          maxHeight: "80vh",
+          cursor: "zoom-in",
+          position: "relative",
+        }}
+        onClick={handleClick}
       >
-        ✕
-      </button>
-      <img
-        ref={imageRef}
-        src={imageUrl}
-        alt="Full size"
-        style={{ transformOrigin }}
-        className={`transition-transform duration-200 ${
-          isZoomed ? "scale-150" : "scale-100"
-        } max-h-[90vh] max-w-[90vw] object-contain cursor-zoom-in`}
-        onClick={handleImageClick}
-      />
-    </div>
+        <Image
+          src={imageUrl}
+          alt="Full size image"
+          fit="contain"
+          style={{
+            maxHeight: "80vh",
+            transform: `scale(${scale}) translate(${position.x}%, ${position.y}%)`,
+            transition: "transform 0.2s ease",
+            transformOrigin: "center",
+          }}
+        />
+      </div>
+    </Modal>
   );
-}
+};
 
 export default ImageViewer;

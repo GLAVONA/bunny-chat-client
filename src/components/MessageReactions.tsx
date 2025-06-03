@@ -1,34 +1,36 @@
 import React from "react";
-import type { DisplayMessage } from "../types";
+import { Group, Badge, Tooltip } from "@mantine/core";
+
+interface Reaction {
+  username: string;
+  reaction: string;
+  timestamp: string;
+}
 
 interface MessageReactionsProps {
-  message: DisplayMessage;
+  reactions: Reaction[];
   currentUsername: string;
 }
 
 export const MessageReactions: React.FC<MessageReactionsProps> = ({
-  message,
+  reactions,
   currentUsername,
 }) => {
   return (
-    <div className="relative">
-      {message.reactions && message.reactions.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1">
-          {message.reactions.map((reaction, index) => (
-            <span
-              key={`${reaction.reaction}-${index}`}
-              className={`text-sm px-2 py-0.5 rounded-full ${
-                reaction.username === currentUsername
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-700/50"
-              }`}
-              title={reaction.username}
-            >
-              {reaction.reaction}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+    <Group gap="xs">
+      {reactions.map((reaction, index) => (
+        <Tooltip
+          key={`${reaction.reaction}-${index}`}
+          label={reaction.username}
+        >
+          <Badge
+            variant={reaction.username === currentUsername ? "filled" : "light"}
+            color={reaction.username === currentUsername ? "blue" : "gray"}
+          >
+            {reaction.reaction}
+          </Badge>
+        </Tooltip>
+      ))}
+    </Group>
   );
 };

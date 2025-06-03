@@ -1,12 +1,16 @@
 // src/App.tsx
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
+import { AppShell, Container, Burger, Group, Button } from "@mantine/core";
 import ChatSetup from "./components/ChatSetup.tsx";
 import ChatWindow from "./components/ChatWindow.tsx";
 import UserList from "./components/UserList.tsx";
 import type { WebSocketMessage, DisplayMessage } from "./types.ts";
 import { AuthService } from "./services/auth.ts";
 import { WebSocketService } from "./services/websocket.ts";
+import { theme } from "./theme";
 
 function App() {
   const [username, setUsername] = useState<string>("");
@@ -22,6 +26,7 @@ function App() {
   const messageHandlerRef = useRef<
     ((message: WebSocketMessage) => void) | null
   >(null);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
     usernameRef.current = username;
@@ -107,11 +112,32 @@ function App() {
                       reaction.timestamp
                   ) || [];
 
-                targetMessage.reactions = validReactions.map((reaction) => ({
-                  username: reaction.username!,
-                  reaction: reaction.reaction!,
-                  timestamp: reaction.timestamp,
-                }));
+                // Remove any existing reaction from the same user for this message
+                const filteredReactions = validReactions.filter(
+                  (reaction) =>
+                    !(
+                      reaction.username === message.username &&
+                      reaction.reaction === message.reaction
+                    )
+                );
+
+                // If the reaction was removed, update the reactions
+                if (filteredReactions.length < validReactions.length) {
+                  targetMessage.reactions = filteredReactions.map(
+                    (reaction) => ({
+                      username: reaction.username!,
+                      reaction: reaction.reaction!,
+                      timestamp: reaction.timestamp,
+                    })
+                  );
+                } else {
+                  // Otherwise add the new reaction
+                  targetMessage.reactions = validReactions.map((reaction) => ({
+                    username: reaction.username!,
+                    reaction: reaction.reaction!,
+                    timestamp: reaction.timestamp,
+                  }));
+                }
               }
               return newMessages;
             });
@@ -390,39 +416,106 @@ function App() {
   };
 
   return (
-    <div
-      className="flex flex-col h-screen bg-cover bg-center"
-      style={{ backgroundImage: `url('galaxyBg.webp')` }}
-    >
-      <main className="flex-1 flex justify-center px-4 md:px-8 lg:px-16 h-full">
-        <div className="w-full max-w-7xl flex gap-4 h-full">
-          {!isConnected ? (
-            <ChatSetup onConnect={connectWebSocket} />
-          ) : (
-            <>
-              <div className="flex-1 min-w-0 h-full">
-                <ChatWindow
-                  messages={messages}
-                  sendMessage={sendMessage}
-                  loadMoreHistory={loadMoreHistory}
-                  hasMoreHistory={hasMoreHistory}
-                  username={username}
-                  roomName={roomName}
-                  onDisconnect={handleDisconnect}
-                />
-              </div>
-              <div className="w-52 flex-shrink-0 h-full">
-                <UserList
-                  users={users}
-                  currentUser={username}
-                  roomName={roomName}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+    <MantineProvider theme={theme} defaultColorScheme="dark">
+      <Notifications />
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundImage: "url(/galaxyBg.webp)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          zIndex: -1,
+          overflow: "hidden",
+        }}
+      />
+      <div style={{ height: "100vh", overflow: "hidden" }}>
+        <AppShell
+          padding="md"
+          header={{ height: 60 }}
+          navbar={{
+            width: 300,
+            breakpoint: "sm",
+            collapsed: { mobile: !opened },
+          }}
+          styles={{
+            root: {
+              overflow: "hidden",
+              height: "100%",
+            },
+            main: {
+              backgroundColor: "transparent",
+              overflow: "hidden",
+              height: "100%",
+            },
+            navbar: {
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              overflow: "hidden",
+            },
+            header: {
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+            },
+          }}
+        >
+          <AppShell.Header>
+            <Container
+              h="100%"
+              display="flex"
+              style={{ alignItems: "center", justifyContent: "flex-end" }}
+            >
+              {isConnected && (
+                <Group gap="xs">
+                  <Button
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    onClick={handleDisconnect}
+                  >
+                    Leave Room
+                  </Button>
+                  <Burger
+                    opened={opened}
+                    onClick={() => setOpened(!opened)}
+                    hiddenFrom="sm"
+                    size="sm"
+                  />
+                </Group>
+              )}
+            </Container>
+          </AppShell.Header>
+
+          <AppShell.Navbar p="md">
+            {isConnected && (
+              <UserList
+                users={users}
+                currentUser={username}
+                roomName={roomName}
+              />
+            )}
+          </AppShell.Navbar>
+
+          <AppShell.Main>
+            {!isConnected ? (
+              <ChatSetup onConnect={connectWebSocket} />
+            ) : (
+              <ChatWindow
+                messages={messages}
+                sendMessage={sendMessage}
+                loadMoreHistory={loadMoreHistory}
+                hasMoreHistory={hasMoreHistory}
+                username={username}
+                roomName={roomName}
+                onDisconnect={handleDisconnect}
+              />
+            )}
+          </AppShell.Main>
+        </AppShell>
+      </div>
+    </MantineProvider>
   );
 }
 
