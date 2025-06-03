@@ -11,6 +11,7 @@ import type { WebSocketMessage, DisplayMessage } from "./types.ts";
 import { AuthService } from "./services/auth.ts";
 import { WebSocketService } from "./services/websocket.ts";
 import { theme } from "./theme";
+import { useTitleNotification } from "./hooks/useTitleNotification";
 
 function App() {
   const [username, setUsername] = useState<string>("");
@@ -27,10 +28,32 @@ function App() {
     ((message: WebSocketMessage) => void) | null
   >(null);
   const [opened, setOpened] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+
+  useTitleNotification(hasNewMessage);
 
   useEffect(() => {
     usernameRef.current = username;
   }, [username]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("Window focused, resetting hasNewMessage");
+      setHasNewMessage(false);
+    };
+
+    const handleBlur = () => {
+      console.log("Window blurred");
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, []);
 
   useEffect(() => {
     messageHandlerRef.current = (message: WebSocketMessage) => {
@@ -54,6 +77,13 @@ function App() {
               };
               const newMessages = [...prev, newMessage];
               console.log("Added new message:", newMessage);
+              if (message.username !== usernameRef.current) {
+                console.log(
+                  "Setting hasNewMessage to true for new message from:",
+                  message.username
+                );
+                setHasNewMessage(true);
+              }
               return newMessages;
             });
           }
@@ -77,6 +107,13 @@ function App() {
                   };
                   return newMessages;
                 }
+              }
+              if (!isOwnMessage) {
+                console.log(
+                  "Setting hasNewMessage to true for new image from:",
+                  message.username
+                );
+                setHasNewMessage(true);
               }
               return [
                 ...prev,
