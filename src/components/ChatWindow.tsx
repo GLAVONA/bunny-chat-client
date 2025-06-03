@@ -90,13 +90,11 @@ const MessageContainer = memo(
     isNotification,
     isOwnMessage,
     sender,
-    username,
     children,
   }: {
     isNotification: boolean;
     isOwnMessage: boolean;
     sender?: string;
-    username: string;
     children: React.ReactNode;
   }) => {
     return (
@@ -105,27 +103,112 @@ const MessageContainer = memo(
           isNotification ? "center" : isOwnMessage ? "flex-end" : "flex-start"
         }
         mb="xs"
+        style={{ width: "100%" }}
       >
         <Paper
           p="xs"
           radius="md"
           bg={
             isNotification
-              ? "var(--mantine-color-dark-6)"
+              ? "var(--mantine-color-dark-5)"
               : isOwnMessage
-              ? "var(--mantine-color-blue-9)"
-              : "var(--mantine-color-dark-7)"
+              ? "var(--mantine-color-blue-8)"
+              : "var(--mantine-color-dark-6)"
           }
-          style={{ maxWidth: "70%" }}
+          style={{
+            maxWidth: "70%",
+            position: "relative",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+          }}
         >
-          {!isNotification && sender && sender !== username && (
-            <Text size="xs" c="dimmed" mb={4}>
+          {!isNotification && !isOwnMessage && sender && (
+            <Text
+              size="xs"
+              c="blue.4"
+              mb={4}
+              fw={500}
+              style={{ textTransform: "capitalize" }}
+            >
               {sender}
             </Text>
           )}
-          {children}
+          <Text
+            c={isOwnMessage ? "white" : "gray.0"}
+            style={{
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+            }}
+          >
+            {children}
+          </Text>
         </Paper>
       </Group>
+    );
+  }
+);
+
+interface Reaction {
+  username: string;
+  reaction: string;
+  timestamp: string;
+}
+
+// Common wrapper for message content with hover state
+const MessageContentWrapper = memo(
+  ({
+    children,
+    isNotification,
+    isOwnMessage,
+    messageId,
+    username,
+    onReaction,
+    userReactions,
+    reactions,
+    topOffset = -13,
+  }: {
+    children: React.ReactNode;
+    isNotification: boolean;
+    isOwnMessage: boolean;
+    messageId: number | undefined;
+    username: string;
+    onReaction: (messageId: number | undefined, reaction: string) => void;
+    userReactions: string[];
+    reactions?: Reaction[];
+    topOffset?: number;
+  }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
+    return (
+      <Stack
+        gap="xs"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {!isNotification && (
+          <Box
+            style={{
+              position: "absolute",
+              top: topOffset,
+              [isOwnMessage ? "left" : "right"]: 4,
+              opacity: isHovered ? 1 : 0,
+              transition: "opacity 0.2s",
+            }}
+          >
+            <ReactionButton
+              isOwnMessage={isOwnMessage}
+              onReaction={onReaction}
+              messageId={messageId}
+              userReactions={userReactions}
+            />
+          </Box>
+        )}
+        {children}
+        {reactions && reactions.length > 0 && (
+          <MessageReactions reactions={reactions} currentUsername={username} />
+        )}
+      </Stack>
     );
   }
 );
@@ -147,7 +230,6 @@ const MessageContent = memo(
     onReaction: (messageId: number | undefined, reaction: string) => void;
     onImageClick: (imageData: string, imageType: string) => void;
   }) => {
-    // Calculate userReactions specifically for this message
     const userReactions =
       message.reactions
         ?.filter((reaction) => reaction.username === username)
@@ -155,7 +237,16 @@ const MessageContent = memo(
 
     if (message.type === "image" && message.imageData) {
       return (
-        <Stack gap="xs">
+        <MessageContentWrapper
+          isNotification={isNotification}
+          isOwnMessage={isOwnMessage}
+          messageId={message.id}
+          username={username}
+          onReaction={onReaction}
+          userReactions={userReactions}
+          reactions={message.reactions}
+          topOffset={4}
+        >
           <Box
             style={{ cursor: "pointer" }}
             onClick={() => onImageClick(message.imageData!, message.imageType!)}
@@ -166,44 +257,26 @@ const MessageContent = memo(
               style={{ maxWidth: "100%", borderRadius: "4px" }}
             />
           </Box>
-          {message.reactions && message.reactions.length > 0 && (
-            <MessageReactions
-              reactions={message.reactions}
-              currentUsername={username}
-            />
-          )}
-          <ReactionButton
-            isOwnMessage={isOwnMessage}
-            onReaction={onReaction}
-            messageId={message.id}
-            userReactions={userReactions}
-          />
-        </Stack>
+        </MessageContentWrapper>
       );
     }
 
     return (
-      <Stack gap="xs">
+      <MessageContentWrapper
+        isNotification={isNotification}
+        isOwnMessage={isOwnMessage}
+        messageId={message.id}
+        username={username}
+        onReaction={onReaction}
+        userReactions={userReactions}
+        reactions={message.reactions}
+      >
         <Text size="sm">
           {isNotification
             ? message.content
             : makeLinksClickable(message.content || "")}
         </Text>
-        {message.reactions && message.reactions.length > 0 && (
-          <MessageReactions
-            reactions={message.reactions}
-            currentUsername={username}
-          />
-        )}
-        {!isNotification && (
-          <ReactionButton
-            isOwnMessage={isOwnMessage}
-            onReaction={onReaction}
-            messageId={message.id}
-            userReactions={userReactions}
-          />
-        )}
-      </Stack>
+      </MessageContentWrapper>
     );
   }
 );
@@ -382,8 +455,28 @@ function ChatWindow({
   }, []);
 
   return (
-    <Container size="lg" h="100%">
-      <Stack h="100%" gap="md">
+    <Container
+      size="sm"
+      h="100%"
+      styles={{
+        root: {
+          padding: "0",
+          "@media (min-width: 768px)": {
+            padding: "1rem",
+          },
+        },
+      }}
+    >
+      <Stack
+        h="100%"
+        gap="md"
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(2px)",
+          borderRadius: "8px",
+          padding: "1rem",
+        }}
+      >
         <ScrollArea
           viewportRef={chatContainerRef}
           onScrollPositionChange={handleScroll}
@@ -399,7 +492,6 @@ function ChatWindow({
                   isNotification={isNotification}
                   isOwnMessage={isOwnMessage}
                   sender={message.sender}
-                  username={username}
                 >
                   <MessageContent
                     message={message}

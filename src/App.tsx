@@ -435,10 +435,9 @@ function App() {
       />
       <div style={{ height: "100vh", overflow: "hidden" }}>
         <AppShell
-          padding="md"
           header={{ height: 60 }}
           navbar={{
-            width: 300,
+            width: 200,
             breakpoint: "sm",
             collapsed: { mobile: !opened },
           }}
