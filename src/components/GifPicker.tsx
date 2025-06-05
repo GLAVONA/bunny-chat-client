@@ -44,14 +44,21 @@ export function GifPicker({ opened, onClose, onSelect }: GifPickerProps) {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://api.giphy.com/v1/gifs/search?api_key=${
-          import.meta.env.VITE_GIPHY_API_KEY
-        }&q=${encodeURIComponent(query)}&limit=20`
+        `/api/giphy/search?q=${encodeURIComponent(query)}`
       );
-      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const text = await response.text();
+
+      const data = JSON.parse(text);
+
       setGifs(data.data);
     } catch (error) {
       console.error("Error fetching GIFs:", error);
+      setGifs([]);
     } finally {
       setLoading(false);
     }
