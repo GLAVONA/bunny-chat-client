@@ -12,7 +12,13 @@ import {
   ScrollArea,
   Box,
 } from "@mantine/core";
-import { MdSend, MdEmojiEmotions, MdImage, MdClose } from "react-icons/md";
+import {
+  MdSend,
+  MdEmojiEmotions,
+  MdImage,
+  MdClose,
+  MdGif,
+} from "react-icons/md";
 import type { ChatWindowProps, DisplayMessage } from "../types";
 import ImageViewer from "./ImageViewer";
 import { MessageReactions } from "./MessageReactions";
@@ -254,7 +260,11 @@ const MessageContent = memo(
             <img
               src={message.imageData}
               alt="Shared image"
-              style={{ maxWidth: "100%", borderRadius: "4px" }}
+              style={{
+                maxWidth: "300px",
+                maxHeight: "300px",
+                borderRadius: "4px",
+              }}
             />
           </Box>
         </MessageContentWrapper>
@@ -345,6 +355,7 @@ function ChatWindow({
   } | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gifInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const initialLoadDoneRef = useRef<boolean>(false);
   const oldScrollHeightRef = useRef<number>(0);
@@ -552,12 +563,24 @@ function ChatWindow({
           backdropFilter: "blur(2px)",
           borderRadius: "8px",
           padding: "1rem",
+          paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
         }}
       >
         <ScrollArea
           viewportRef={chatContainerRef}
           onScrollPositionChange={handleScroll}
           h="calc(100vh - 200px)"
+          styles={{
+            viewport: {
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+              touchAction: "pan-y",
+            },
+            root: {
+              position: "relative",
+              isolation: "isolate",
+            },
+          }}
         >
           <MessageList
             messages={messages}
@@ -567,7 +590,12 @@ function ChatWindow({
           />
         </ScrollArea>
 
-        <form onSubmit={handleSendMessage}>
+        <form
+          onSubmit={handleSendMessage}
+          style={{
+            paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
           <Group>
             <TextInput
               value={inputMessage}
@@ -580,15 +608,31 @@ function ChatWindow({
               type="file"
               ref={fileInputRef}
               onChange={handleFileSelect}
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+            />
+            <input
+              type="file"
+              ref={gifInputRef}
+              onChange={handleFileSelect}
+              accept="image/gif"
               style={{ display: "none" }}
             />
             <ActionIcon
               variant="subtle"
               color="blue"
               onClick={() => fileInputRef.current?.click()}
+              title="Upload image"
             >
               <MdImage size={20} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="blue"
+              onClick={() => gifInputRef.current?.click()}
+              title="Upload GIF"
+            >
+              <MdGif size={20} />
             </ActionIcon>
             <Button type="submit" variant="filled" color="blue">
               <MdSend size={20} />
@@ -611,7 +655,7 @@ function ChatWindow({
                 leftSection={<MdClose size={16} />}
                 onClick={handleRemovePreview}
               >
-                Remove image
+                Remove {selectedFile?.type === "image/gif" ? "GIF" : "image"}
               </Button>
             </Stack>
           </Box>

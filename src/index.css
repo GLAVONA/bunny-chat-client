@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: none;
+  touch-action: none;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: none;
+  touch-action: none;
+}
+
+/* Prevent scrolling on the main container */
+.mantine-AppShell-root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mantine-AppShell-main {
+  height: calc(100vh - 60px) !important; /* Account for header */
+  overflow: hidden !important;
+}
+
+/* Allow scrolling only within the chat window */
+.mantine-ScrollArea-viewport {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Prevent scrolling everywhere else */
+.mantine-Stack-root,
+.mantine-Group-root,
+.mantine-TextInput-root,
+.mantine-Button-root,
+.mantine-ActionIcon-root {
+  touch-action: none;
+  -webkit-overflow-scrolling: none;
+  overscroll-behavior: none;
+}

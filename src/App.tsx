@@ -463,7 +463,16 @@ function App() {
           overflow: "hidden",
         }}
       />
-      <div style={{ height: "100vh", overflow: "hidden" }}>
+      <div
+        style={{
+          height: "100vh",
+          width: "100vw",
+          overflow: "hidden",
+          position: "fixed",
+          top: 0,
+          left: 0,
+        }}
+      >
         <AppShell
           header={{ height: 60 }}
           navbar={{
@@ -475,11 +484,13 @@ function App() {
             root: {
               overflow: "hidden",
               height: "100%",
+              width: "100%",
             },
             main: {
               backgroundColor: "transparent",
               overflow: "hidden",
-              height: "100%",
+              height: "calc(100% - 60px)",
+              width: "100%",
             },
             navbar: {
               backgroundColor: "rgba(0, 0, 0, 0.8)",

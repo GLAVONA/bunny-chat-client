@@ -62,11 +62,14 @@ export class WebSocketService {
     if (this.room) params.append("room", this.room);
     if (this.token) params.append("token", this.token);
 
-    // In development, connect to the WebSocket server directly
-    // In production, use the same host as the current page
+    // In development, use the current host if it's an IP address, otherwise use localhost
     const isDev = import.meta.env.DEV;
     const devPort = import.meta.env.VITE_WS_PORT || "8080";
-    const host = isDev ? `localhost:${devPort}` : window.location.host;
+    const isLocalIP =
+      window.location.hostname.startsWith("192.168.") ||
+      window.location.hostname.startsWith("127.");
+    const host =
+      isDev && !isLocalIP ? `localhost:${devPort}` : window.location.host;
     const url = `${protocol}//${host}/ws?${params.toString()}`;
 
     console.log("Generated WebSocket URL:", {
@@ -75,6 +78,7 @@ export class WebSocketService {
       host,
       currentHost: window.location.host,
       devPort,
+      isLocalIP,
     });
     return url;
   }
