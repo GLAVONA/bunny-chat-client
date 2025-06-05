@@ -1,26 +1,21 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
-  Paper,
-  Text,
+  Container,
   Stack,
   Group,
   ActionIcon,
   TextInput,
   Button,
   Menu,
-  Container,
-  ScrollArea,
+  Text,
+  Paper,
   Box,
+  ScrollArea,
 } from "@mantine/core";
-import {
-  MdSend,
-  MdEmojiEmotions,
-  MdImage,
-  MdClose,
-  MdGif,
-} from "react-icons/md";
-import type { ChatWindowProps, DisplayMessage } from "../types";
+import { MdSend, MdClose, MdEmojiEmotions, MdGif } from "react-icons/md";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import ImageViewer from "./ImageViewer";
+import { GifPicker } from "./GifPicker";
+import type { ChatWindowProps, DisplayMessage } from "../types";
 import { MessageReactions } from "./MessageReactions";
 
 // Helper function to detect URLs and make them clickable
@@ -261,9 +256,18 @@ const MessageContent = memo(
               src={message.imageData}
               alt="Shared image"
               style={{
-                maxWidth: "300px",
+                maxWidth: "100%",
                 maxHeight: "300px",
+                width: "auto",
+                height: "auto",
                 borderRadius: "4px",
+                objectFit: "contain",
+                display: "block",
+                margin: "0 auto",
+                ...(message.imageType === "image/gif" && {
+                  imageRendering: "pixelated",
+                  willChange: "transform",
+                }),
               }}
             />
           </Box>
@@ -347,22 +351,21 @@ function ChatWindow({
   username,
 }: ChatWindowProps) {
   const [inputMessage, setInputMessage] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<{
     url: string;
     type: string;
   } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const gifInputRef = useRef<HTMLInputElement>(null);
+  const [gifPickerOpened, setGifPickerOpened] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<MutationObserver | null>(null);
   const initialLoadDoneRef = useRef<boolean>(false);
   const oldScrollHeightRef = useRef<number>(0);
   const oldScrollTopRef = useRef<number>(0);
   const pendingScrollAdjustmentRef = useRef<boolean>(false);
   const prevMessagesLengthRef = useRef<number>(0);
-  const observerRef = useRef<MutationObserver | null>(null);
 
   // Set up MutationObserver to handle scroll position adjustments
   useEffect(() => {
@@ -441,38 +444,39 @@ function ChatWindow({
       if (!inputMessage.trim() && !selectedFile) return;
 
       if (selectedFile) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64Data = e.target?.result as string;
-          const imageType = selectedFile.type;
+        if (
+          selectedFile.size === 0 &&
+          selectedFile.type === "image/gif" &&
+          previewUrl
+        ) {
+          // Handle GIF URL directly
           sendMessage("", {
             type: "image",
-            imageData: base64Data,
-            imageType,
+            imageData: previewUrl,
+            imageType: "image/gif",
           });
-          setSelectedFile(null);
-          setPreviewUrl(null);
-        };
-        reader.readAsDataURL(selectedFile);
+        } else {
+          // Handle regular images with base64 conversion
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64Data = e.target?.result as string;
+            const imageType = selectedFile.type;
+            sendMessage("", {
+              type: "image",
+              imageData: base64Data,
+              imageType,
+            });
+          };
+          reader.readAsDataURL(selectedFile);
+        }
+        setSelectedFile(null);
+        setPreviewUrl(null);
       } else {
         sendMessage(inputMessage);
         setInputMessage("");
       }
     },
-    [inputMessage, selectedFile, sendMessage]
-  );
-
-  // Memoize the file select handler
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        setSelectedFile(file);
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-      }
-    },
-    []
+    [inputMessage, selectedFile, previewUrl, sendMessage]
   );
 
   // Memoize the image click handler
@@ -542,6 +546,11 @@ function ChatWindow({
     };
   }, [previewUrl]);
 
+  const handleGifSelect = useCallback((gifUrl: string) => {
+    setSelectedFile(new File([], "gif.gif", { type: "image/gif" }));
+    setPreviewUrl(gifUrl);
+  }, []);
+
   return (
     <Container
       size="sm"
@@ -604,33 +613,11 @@ function ChatWindow({
               placeholder="Type a message..."
               style={{ flex: 1 }}
             />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/jpeg,image/png,image/webp"
-              style={{ display: "none" }}
-            />
-            <input
-              type="file"
-              ref={gifInputRef}
-              onChange={handleFileSelect}
-              accept="image/gif"
-              style={{ display: "none" }}
-            />
             <ActionIcon
               variant="subtle"
               color="blue"
-              onClick={() => fileInputRef.current?.click()}
-              title="Upload image"
-            >
-              <MdImage size={20} />
-            </ActionIcon>
-            <ActionIcon
-              variant="subtle"
-              color="blue"
-              onClick={() => gifInputRef.current?.click()}
-              title="Upload GIF"
+              onClick={() => setGifPickerOpened(true)}
+              title="Add GIF"
             >
               <MdGif size={20} />
             </ActionIcon>
@@ -646,7 +633,13 @@ function ChatWindow({
               <img
                 src={previewUrl}
                 alt="Preview"
-                style={{ maxWidth: "200px", maxHeight: "200px" }}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "200px",
+                  width: "auto",
+                  height: "auto",
+                  objectFit: "contain",
+                }}
               />
               <Button
                 variant="subtle"
@@ -667,6 +660,12 @@ function ChatWindow({
             onClose={() => setSelectedImage(null)}
           />
         )}
+
+        <GifPicker
+          opened={gifPickerOpened}
+          onClose={() => setGifPickerOpened(false)}
+          onSelect={handleGifSelect}
+        />
       </Stack>
     </Container>
   );
