@@ -651,6 +651,7 @@ function ChatWindow({
               onPaste={handlePaste}
               placeholder="Type a message..."
               style={{ flex: 1 }}
+              autoComplete="off"
             />
             <ActionIcon
               variant="subtle"
