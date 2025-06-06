@@ -25,6 +25,11 @@ export interface WebSocketMessage {
   imageType?: string;
   reactionToId?: number;
   reaction?: string;
+  replyToId?: number;
+  replyTo?: {
+    sender: string;
+    content: string;
+  };
   history?: Array<{
     id?: number;
     type: "chat" | "image" | "reaction";
@@ -36,6 +41,11 @@ export interface WebSocketMessage {
     imageType?: string;
     reactionToId?: number;
     reaction?: string;
+    replyToId?: number;
+    replyTo?: {
+      sender: string;
+      content: string;
+    };
   }>;
   // Pagination fields
   pageSize?: number;
@@ -44,21 +54,28 @@ export interface WebSocketMessage {
 }
 
 // Client-side message representation (for display)
+export interface ReplyToMessage {
+  sender: string;
+  content: string;
+  type?: "text" | "image";
+  imageData?: string;
+}
+
 export interface DisplayMessage {
   id?: number;
-  type: "chat" | "notification" | "image" | "reaction";
+  type: MessageType;
   sender?: string;
   content?: string;
+  timestamp?: string;
   imageData?: string;
   imageType?: string;
-  reactionToId?: number;
-  reaction?: string;
   reactions?: Array<{
     username: string;
     reaction: string;
     timestamp: string;
   }>;
-  timestamp?: string;
+  replyToId?: number;
+  replyTo?: ReplyToMessage;
 }
 
 // Props for components
@@ -73,6 +90,7 @@ export interface ChatWindowProps {
     imageData?:
       | { type: "image"; imageData: string; imageType: string }
       | { type: "reaction"; reactionToId: number; reaction: string }
+      | { type: "reply"; replyToId: number }
   ) => void;
   loadMoreHistory: () => void;
   hasMoreHistory: boolean;

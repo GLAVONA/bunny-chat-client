@@ -68,13 +68,14 @@ function App() {
                 content: message.content,
                 timestamp: message.timestamp!,
               };
+              if (message.replyToId) {
+                newMessage.replyToId = message.replyToId;
+              }
+              if (message.replyTo) {
+                newMessage.replyTo = message.replyTo;
+              }
               const newMessages = [...prev, newMessage];
-              console.log("Added new message:", newMessage);
               if (message.username !== usernameRef.current) {
-                console.log(
-                  "Setting hasNewMessage to true for new message from:",
-                  message.username
-                );
                 setHasNewMessage(true);
               }
               return newMessages;
@@ -184,6 +185,8 @@ function App() {
                 timestamp: histMsg.timestamp,
                 imageData: histMsg.imageData,
                 imageType: histMsg.imageType,
+                replyToId: histMsg.replyToId,
+                replyTo: histMsg.replyTo,
                 reactions: (histMsg as WebSocketMessage).history
                   ?.filter(
                     (reaction) =>
@@ -382,18 +385,9 @@ function App() {
       imageData?:
         | { type: "image"; imageData: string; imageType: string }
         | { type: "reaction"; reactionToId: number; reaction: string }
+        | { type: "reply"; replyToId: number }
     ) => {
       if (!ws.current) return;
-
-      if (imageData?.type === "reaction") {
-        const targetMessage = messages.find(
-          (msg) => msg.id === imageData.reactionToId
-        );
-        if (!targetMessage) {
-          console.error("Cannot react to message: Message not found");
-          return;
-        }
-      }
 
       let message: WebSocketMessage = {
         type: "chat",
@@ -417,12 +411,17 @@ function App() {
             imageData: imageData.imageData,
             imageType: imageData.imageType,
           };
+        } else if (imageData.type === "reply") {
+          message = {
+            ...message,
+            replyToId: imageData.replyToId,
+          };
         }
       }
 
       ws.current.sendMessage(message);
     },
-    [username, roomName, messages]
+    [username, roomName]
   );
 
   const handleDisconnect = async () => {

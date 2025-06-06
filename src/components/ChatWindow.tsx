@@ -11,8 +11,22 @@ import {
   Box,
   ScrollArea,
 } from "@mantine/core";
-import { MdSend, MdClose, MdEmojiEmotions, MdGif } from "react-icons/md";
-import { useCallback, useEffect, useRef, useState, memo } from "react";
+import {
+  MdSend,
+  MdClose,
+  MdEmojiEmotions,
+  MdGif,
+  MdReply,
+} from "react-icons/md";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  memo,
+  forwardRef,
+  useMemo,
+} from "react";
 import ImageViewer from "./ImageViewer";
 import { GifPicker } from "./GifPicker";
 import type { ChatWindowProps, DisplayMessage } from "../types";
@@ -85,107 +99,142 @@ const ReactionButton = memo(
   }
 );
 
-// Message Container Component
-const MessageContainer = memo(
+// Memoize the reply button to prevent unnecessary re-renders
+const ReplyButton = memo(
   ({
-    isNotification,
-    isOwnMessage,
-    sender,
-    timestamp,
-    children,
+    messageId,
+    onReply,
   }: {
-    isNotification: boolean;
-    isOwnMessage: boolean;
-    sender?: string;
-    timestamp?: string;
-    children: React.ReactNode;
+    messageId: number | undefined;
+    onReply?: (messageId: number | undefined) => void;
   }) => {
-    const formatTimestamp = (timestamp: string) => {
-      const date = new Date(timestamp);
-      const today = new Date();
-      const isToday = date.toDateString() === today.toDateString();
-
-      const timeStr = date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      });
-
-      if (isToday) {
-        return timeStr;
-      }
-
-      const dateStr = date.toLocaleDateString([], {
-        month: "short",
-        day: "numeric",
-      });
-
-      return `${dateStr} ${timeStr}`;
-    };
-
-    const formattedTime = timestamp ? formatTimestamp(timestamp) : "";
-
+    if (!onReply) return null;
     return (
-      <Group
-        justify={
-          isNotification ? "center" : isOwnMessage ? "flex-end" : "flex-start"
-        }
-        mb="xs"
-        style={{ width: "100%" }}
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        onClick={() => onReply(messageId)}
       >
-        <Paper
-          p="xs"
-          radius="md"
-          bg={
-            isNotification
-              ? "var(--mantine-color-dark-5)"
-              : isOwnMessage
-              ? "var(--mantine-color-blue-8)"
-              : "var(--mantine-color-dark-6)"
-          }
-          style={{
-            maxWidth: "70%",
-            position: "relative",
-            wordBreak: "break-word",
-            overflowWrap: "break-word",
-          }}
-        >
-          {!isNotification && !isOwnMessage && sender && (
-            <Text
-              size="xs"
-              c="blue.4"
-              mb={4}
-              fw={500}
-              style={{ textTransform: "capitalize" }}
-            >
-              {sender}
-            </Text>
-          )}
-          <Box
-            c={isOwnMessage ? "white" : "gray.0"}
-            style={{
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              overflowWrap: "break-word",
-            }}
-          >
-            {children}
-          </Box>
-          {!isNotification && timestamp && (
-            <Text
-              size="xs"
-              c={isOwnMessage ? "gray.3" : "gray.4"}
-              ta={isOwnMessage ? "right" : "left"}
-              mt={4}
-              fw={100}
-            >
-              {formattedTime}
-            </Text>
-          )}
-        </Paper>
-      </Group>
+        <MdReply size={18} />
+      </ActionIcon>
     );
   }
+);
+
+// Message Container Component
+const MessageContainer = memo(
+  forwardRef<
+    HTMLDivElement,
+    {
+      isNotification: boolean;
+      isOwnMessage: boolean;
+      sender?: string;
+      timestamp?: string;
+      children: React.ReactNode;
+      isHighlighted?: boolean;
+    }
+  >(
+    (
+      {
+        isNotification,
+        isOwnMessage,
+        sender,
+        timestamp,
+        children,
+        isHighlighted,
+      },
+      ref
+    ) => {
+      const formatTimestamp = (timestamp: string) => {
+        const date = new Date(timestamp);
+        const today = new Date();
+        const isToday = date.toDateString() === today.toDateString();
+
+        const timeStr = date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+
+        if (isToday) {
+          return timeStr;
+        }
+
+        const dateStr = date.toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+        });
+
+        return `${dateStr} ${timeStr}`;
+      };
+
+      const formattedTime = timestamp ? formatTimestamp(timestamp) : "";
+
+      const backgroundColor = isHighlighted
+        ? "var(--mantine-color-blue-6)"
+        : isNotification
+        ? "var(--mantine-color-dark-5)"
+        : isOwnMessage
+        ? "var(--mantine-color-blue-8)"
+        : "var(--mantine-color-dark-6)";
+
+      return (
+        <Group
+          ref={ref}
+          justify={
+            isNotification ? "center" : isOwnMessage ? "flex-end" : "flex-start"
+          }
+          mb="xs"
+          style={{ width: "100%" }}
+        >
+          <Paper
+            p="xs"
+            radius="md"
+            style={{
+              maxWidth: "70%",
+              position: "relative",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              backgroundColor,
+            }}
+          >
+            {!isNotification && !isOwnMessage && sender && (
+              <Text
+                size="xs"
+                c="blue.4"
+                mb={4}
+                fw={500}
+                style={{ textTransform: "capitalize" }}
+              >
+                {sender}
+              </Text>
+            )}
+            <Box
+              c={isOwnMessage ? "white" : "gray.0"}
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
+              {children}
+            </Box>
+            {!isNotification && timestamp && (
+              <Text
+                size="xs"
+                c={isOwnMessage ? "gray.3" : "gray.4"}
+                ta={isOwnMessage ? "right" : "left"}
+                mt={4}
+                fw={100}
+              >
+                {formattedTime}
+              </Text>
+            )}
+          </Paper>
+        </Group>
+      );
+    }
+  )
 );
 
 interface Reaction {
@@ -205,7 +254,8 @@ const MessageContentWrapper = memo(
     onReaction,
     userReactions,
     reactions,
-    topOffset = -13,
+    topOffset = -16,
+    onReply,
   }: {
     children: React.ReactNode;
     isNotification: boolean;
@@ -216,6 +266,7 @@ const MessageContentWrapper = memo(
     userReactions: string[];
     reactions?: Reaction[];
     topOffset?: number;
+    onReply?: (messageId: number | undefined) => void;
   }) => {
     const [isHovered, setIsHovered] = useState(false);
 
@@ -233,8 +284,10 @@ const MessageContentWrapper = memo(
               [isOwnMessage ? "left" : "right"]: 4,
               opacity: isHovered ? 1 : 0,
               transition: "opacity 0.2s",
+              display: "flex",
             }}
           >
+            <ReplyButton messageId={messageId} onReply={onReply} />
             <ReactionButton
               isOwnMessage={isOwnMessage}
               onReaction={onReaction}
@@ -252,6 +305,38 @@ const MessageContentWrapper = memo(
   }
 );
 
+// Memoize the reply context bar
+const ReplyContextBar = memo(
+  ({
+    replyingTo,
+    onClose,
+  }: {
+    replyingTo: { messageId: number; sender: string; content: string };
+    onClose: () => void;
+  }) => (
+    <Paper p="xs" radius="md" mb="xs" bg="var(--mantine-color-dark-6)">
+      <Group justify="space-between">
+        <Text
+          size="sm"
+          c="blue.4"
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Replying to {replyingTo.sender}:
+          <br />
+          {replyingTo.content}
+        </Text>
+        <ActionIcon variant="subtle" color="gray" onClick={onClose}>
+          <MdClose size={18} />
+        </ActionIcon>
+      </Group>
+    </Paper>
+  )
+);
+
 // Message Content Component
 const MessageContent = memo(
   ({
@@ -261,6 +346,8 @@ const MessageContent = memo(
     username,
     onReaction,
     onImageClick,
+    onReply,
+    onReplyClick,
   }: {
     message: DisplayMessage;
     isNotification: boolean;
@@ -268,6 +355,8 @@ const MessageContent = memo(
     username: string;
     onReaction: (messageId: number | undefined, reaction: string) => void;
     onImageClick: (imageData: string, imageType: string) => void;
+    onReply?: (messageId: number | undefined) => void;
+    onReplyClick?: (messageId: number) => void;
   }) => {
     const userReactions =
       message.reactions
@@ -285,6 +374,7 @@ const MessageContent = memo(
           userReactions={userReactions}
           reactions={message.reactions}
           topOffset={4}
+          onReply={onReply}
         >
           <Box
             style={{ cursor: "pointer" }}
@@ -322,8 +412,45 @@ const MessageContent = memo(
         onReaction={onReaction}
         userReactions={userReactions}
         reactions={message.reactions}
+        onReply={onReply}
       >
         <Box>
+          {message.replyToId && message.replyTo && (
+            <Box
+              mb={8}
+              ml={-8}
+              pl={8}
+              style={{
+                borderLeft: "2px solid rgba(255,255,255,0.2)",
+                cursor: "pointer",
+              }}
+              onClick={() =>
+                message.replyToId && onReplyClick?.(message.replyToId)
+              }
+            >
+              <Text size="sm" c="dimmed" fw={500}>
+                {message.replyTo.sender}
+              </Text>
+              {message.replyTo.type === "image" ? (
+                <Group gap={8} align="center">
+                  <img
+                    src={message.replyTo.imageData}
+                    alt="Reply preview"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      objectFit: "cover",
+                      borderRadius: "4px",
+                    }}
+                  />
+                </Group>
+              ) : (
+                <Text size="sm" c="dimmed" lineClamp={1}>
+                  {message.replyTo.content}
+                </Text>
+              )}
+            </Box>
+          )}
           {isNotification ? (
             <Text size="sm" component="span">
               {message.content}
@@ -346,24 +473,81 @@ const MessageList = memo(
     username,
     onReaction,
     onImageClick,
+    onReply,
+    loadMoreHistory,
+    hasMoreHistory,
   }: {
     messages: DisplayMessage[];
     username: string;
     onReaction: (messageId: number | undefined, reaction: string) => void;
     onImageClick: (imageData: string, imageType: string) => void;
+    onReply?: (messageId: number | undefined) => void;
+    loadMoreHistory?: () => void;
+    hasMoreHistory?: boolean;
   }) => {
+    const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+    const [highlightedMessageId, setHighlightedMessageId] = useState<
+      number | null
+    >(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    // Deduplicate messages by ID
+    const uniqueMessages = useMemo(() => {
+      const seen = new Set<number>();
+      return messages.filter((message) => {
+        if (!message.id || seen.has(message.id)) {
+          return false;
+        }
+        seen.add(message.id);
+        return true;
+      });
+    }, [messages]);
+
+    const scrollToMessage = async (messageId: number) => {
+      const messageElement = messageRefs.current.get(messageId);
+
+      if (messageElement) {
+        setHighlightedMessageId(messageId);
+        messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // Remove highlight after animation
+        setTimeout(() => {
+          setHighlightedMessageId(null);
+        }, 2000);
+      } else if (hasMoreHistory && loadMoreHistory && !isLoadingMore) {
+        // If message not found and we have more history, load more
+        setIsLoadingMore(true);
+        loadMoreHistory();
+
+        // Wait a bit for the new messages to load
+        setTimeout(() => {
+          setIsLoadingMore(false);
+          // Try scrolling again after loading more messages
+          scrollToMessage(messageId);
+        }, 500);
+      }
+    };
+
     return (
       <Stack gap="xs" p="md">
-        {messages.map((message, index) => {
+        {uniqueMessages.map((message, index) => {
           const isOwnMessage = message.sender === username;
           const isNotification = message.type === "notification";
+          const isHighlighted = message.id === highlightedMessageId;
+
           return (
             <MessageContainer
-              key={message.id || index}
+              key={`${message.id}-${index}`}
               isNotification={isNotification}
               isOwnMessage={isOwnMessage}
               sender={message.sender}
               timestamp={message.timestamp}
+              ref={(el) => {
+                if (message.id && el) {
+                  messageRefs.current.set(message.id, el);
+                }
+              }}
+              isHighlighted={isHighlighted}
             >
               <MessageContent
                 message={message}
@@ -372,6 +556,8 @@ const MessageList = memo(
                 username={username}
                 onReaction={onReaction}
                 onImageClick={onImageClick}
+                onReply={onReply}
+                onReplyClick={scrollToMessage}
               />
             </MessageContainer>
           );
@@ -405,6 +591,11 @@ function ChatWindow({
   const oldScrollTopRef = useRef<number>(0);
   const pendingScrollAdjustmentRef = useRef<boolean>(false);
   const prevMessagesLengthRef = useRef<number>(0);
+  const [replyingTo, setReplyingTo] = useState<{
+    messageId: number;
+    sender: string;
+    content: string;
+  } | null>(null);
 
   // Set up MutationObserver to handle scroll position adjustments
   useEffect(() => {
@@ -511,11 +702,20 @@ function ChatWindow({
         setSelectedFile(null);
         setPreviewUrl(null);
       } else {
-        sendMessage(inputMessage);
+        console.log(replyingTo);
+        if (replyingTo) {
+          sendMessage(inputMessage, {
+            type: "reply",
+            replyToId: replyingTo.messageId,
+          });
+        } else {
+          sendMessage(inputMessage);
+        }
         setInputMessage("");
+        setReplyingTo(null);
       }
     },
-    [inputMessage, selectedFile, previewUrl, sendMessage]
+    [inputMessage, selectedFile, previewUrl, sendMessage, replyingTo]
   );
 
   // Memoize the image click handler
@@ -590,6 +790,27 @@ function ChatWindow({
     setPreviewUrl(gifUrl);
   }, []);
 
+  // Memoize the reply handler
+  const handleReply = useCallback(
+    (messageId: number | undefined) => {
+      if (!messageId) return;
+      const message = messages.find((m) => m.id === messageId);
+      if (message) {
+        setReplyingTo({
+          messageId: message.id!,
+          sender: message.sender!,
+          content: message.content!,
+        });
+      }
+    },
+    [messages]
+  );
+
+  // Memoize the close reply handler
+  const handleCloseReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
   return (
     <Container
       size="sm"
@@ -635,8 +856,15 @@ function ChatWindow({
             username={username}
             onReaction={handleReaction}
             onImageClick={handleImageClick}
+            onReply={handleReply}
+            loadMoreHistory={loadMoreHistory}
+            hasMoreHistory={hasMoreHistory}
           />
         </ScrollArea>
+
+        {replyingTo && (
+          <ReplyContextBar replyingTo={replyingTo} onClose={handleCloseReply} />
+        )}
 
         <form
           onSubmit={handleSendMessage}
