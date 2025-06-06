@@ -455,7 +455,7 @@ function App() {
           left: 0,
           width: "100vw",
           height: "100vh",
-          backgroundImage: "url(/galaxyBg.webp)",
+          backgroundImage: "url(/galaxyBg2.jpg)",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",

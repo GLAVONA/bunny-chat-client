@@ -91,13 +91,40 @@ const MessageContainer = memo(
     isNotification,
     isOwnMessage,
     sender,
+    timestamp,
     children,
   }: {
     isNotification: boolean;
     isOwnMessage: boolean;
     sender?: string;
+    timestamp?: string;
     children: React.ReactNode;
   }) => {
+    const formatTimestamp = (timestamp: string) => {
+      const date = new Date(timestamp);
+      const today = new Date();
+      const isToday = date.toDateString() === today.toDateString();
+
+      const timeStr = date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+
+      if (isToday) {
+        return timeStr;
+      }
+
+      const dateStr = date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+      });
+
+      return `${dateStr} ${timeStr}`;
+    };
+
+    const formattedTime = timestamp ? formatTimestamp(timestamp) : "";
+
     return (
       <Group
         justify={
@@ -144,6 +171,17 @@ const MessageContainer = memo(
           >
             {children}
           </Box>
+          {!isNotification && timestamp && (
+            <Text
+              size="xs"
+              c={isOwnMessage ? "gray.3" : "gray.4"}
+              ta={isOwnMessage ? "right" : "left"}
+              mt={4}
+              fw={100}
+            >
+              {formattedTime}
+            </Text>
+          )}
         </Paper>
       </Group>
     );
@@ -325,6 +363,7 @@ const MessageList = memo(
               isNotification={isNotification}
               isOwnMessage={isOwnMessage}
               sender={message.sender}
+              timestamp={message.timestamp}
             >
               <MessageContent
                 message={message}
